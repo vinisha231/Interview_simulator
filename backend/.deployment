@@ -1,2 +1,12 @@
+# Azure Deployment Configuration
+# =============================
+# This file tells Azure App Service how to deploy our application.
+#
+# SCM_DO_BUILD_DURING_DEPLOYMENT=true means:
+# - Azure will run pip install during deployment
+# - This ensures all dependencies are installed automatically
+# - Required for Python applications with requirements.txt
+
 [config]
+# Enable build during deployment - installs Python packages from requirements.txt
 SCM_DO_BUILD_DURING_DEPLOYMENT=true
