@@ -2,7 +2,7 @@
 
 A comprehensive FastAPI backend for the LLM Interview Simulator project. This backend provides REST API endpoints for interview functionality, question management, and answer evaluation.
 
-## 🚀 Features
+## Features
 
 - **FastAPI Framework**: Modern, fast web framework with automatic API documentation
 - **Interview API**: Endpoints for managing interview questions and evaluations
@@ -11,7 +11,7 @@ A comprehensive FastAPI backend for the LLM Interview Simulator project. This ba
 - **Azure Ready**: Pre-configured for deployment on Azure App Service
 - **Docker Support**: Containerized deployment option included
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 backend/
@@ -31,7 +31,7 @@ backend/
 └── .deployment             # Azure deployment settings
 ```
 
-## 🛠️ Setup and Installation
+## Setup and Installation
 
 ### Prerequisites
 
@@ -65,7 +65,7 @@ backend/
    - Interactive docs: http://localhost:8000/docs
    - Health check: http://localhost:8000/health
 
-## 📚 API Endpoints
+## API Endpoints
 
 ### Core Endpoints
 
@@ -97,7 +97,7 @@ curl -X POST http://localhost:8000/api/interview/evaluate \
 curl http://localhost:8000/api/interview/types
 ```
 
-## 🐳 Docker Deployment
+## Docker Deployment
 
 ### Build the Docker image
 ```bash
@@ -137,7 +137,7 @@ az container create --resource-group your-rg --name llm-interview-container \
   --image yourregistry.azurecr.io/llm-interview-simulator --ports 8000
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -167,7 +167,7 @@ app.add_middleware(
 )
 ```
 
-## 🧪 Testing
+## Testing
 
 ### Run tests
 ```bash
@@ -183,7 +183,7 @@ pytest tests/
 - Test endpoints using curl or Postman
 - Check health endpoint for monitoring
 
-## 📝 Development Notes
+## Development Notes
 
 ### Code Structure
 
@@ -207,7 +207,7 @@ pytest tests/
 - [ ] Advanced scoring algorithms
 - [ ] Interview analytics and reporting
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -215,11 +215,11 @@ pytest tests/
 4. Test your changes
 5. Submit a pull request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](../LICENSE) file for details.
 
-## 🆘 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -250,4 +250,4 @@ This project is licensed under the MIT License - see the [LICENSE](../LICENSE) f
 
 ---
 
-**Happy coding! 🎉**
+**Happy coding!**
