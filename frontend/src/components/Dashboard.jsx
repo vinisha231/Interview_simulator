@@ -107,7 +107,7 @@ export default function Dashboard() {
                 <ul style={{ paddingLeft: 20, margin: 0 }}>
                   {stats.strengths.slice(0, 5).map((s, i) => (
                     <li key={i} style={{ marginBottom: 8 }}>
-                      {s || "Strong performance in this area"}
+                      <strong>Session {i + 1}:</strong> {s || "Strong performance in this area"}
                     </li>
                   ))}
                 </ul>
@@ -122,7 +122,7 @@ export default function Dashboard() {
                 <ul style={{ paddingLeft: 20, margin: 0 }}>
                   {stats.weaknesses.slice(0, 5).map((w, i) => (
                     <li key={i} style={{ marginBottom: 8 }}>
-                      {w || "Could benefit from more practice"}
+                      <strong>Session {i + 1}:</strong> {w || "Could benefit from more practice"}
                     </li>
                   ))}
                 </ul>
@@ -136,40 +136,61 @@ export default function Dashboard() {
 
       {/* Recent History */}
       <div>
-        <h2>Recent History</h2>
+        <h2>Recent Interview History</h2>
         {history.length > 0 ? (
-          <div>
-            {history.map((session) => (
-              <div
-                key={session.id}
-                style={{
-                  border: "1px solid #ddd",
-                  padding: 16,
-                  borderRadius: 8,
-                  marginBottom: 12,
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <div>
-                    <strong style={{ textTransform: "capitalize" }}>{session.type}</strong>
-                    <span style={{ marginLeft: 12, color: "#666", fontSize: 14 }}>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #ddd" }}>
+              <thead>
+                <tr style={{ background: "#f5f5f5" }}>
+                  <th style={{ padding: 12, border: "1px solid #ddd", textAlign: "left" }}>Date</th>
+                  <th style={{ padding: 12, border: "1px solid #ddd", textAlign: "left" }}>Type</th>
+                  <th style={{ padding: 12, border: "1px solid #ddd", textAlign: "left" }}>Question</th>
+                  <th style={{ padding: 12, border: "1px solid #ddd", textAlign: "left" }}>Your Answer</th>
+                  <th style={{ padding: 12, border: "1px solid #ddd", textAlign: "center" }}>Score</th>
+                  <th style={{ padding: 12, border: "1px solid #ddd", textAlign: "left" }}>Feedback (JSON)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((session) => (
+                  <tr key={session.id}>
+                    <td style={{ padding: 12, border: "1px solid #ddd" }}>
                       {new Date(session.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 20, fontWeight: "bold", color: session.score >= 70 ? "green" : session.score >= 50 ? "orange" : "red" }}>
-                    {session.score}%
-                  </div>
-                </div>
-                <p style={{ margin: "8px 0", color: "#666" }}>
-                  <strong>Q:</strong> {session.question}
-                </p>
-                {session.feedback && (
-                  <p style={{ margin: "8px 0 0 0", fontSize: 14 }}>
-                    <strong>Feedback:</strong> {session.feedback}
-                  </p>
-                )}
-              </div>
-            ))}
+                    </td>
+                    <td style={{ padding: 12, border: "1px solid #ddd", textTransform: "capitalize" }}>
+                      {session.type}
+                    </td>
+                    <td style={{ padding: 12, border: "1px solid #ddd", maxWidth: 300, wordBreak: "break-word" }}>
+                      {session.question}
+                    </td>
+                    <td style={{ padding: 12, border: "1px solid #ddd", maxWidth: 300, wordBreak: "break-word" }}>
+                      {session.user_answer || "No answer provided"}
+                    </td>
+                    <td style={{ padding: 12, border: "1px solid #ddd", textAlign: "center", fontWeight: "bold", color: session.score >= 70 ? "green" : session.score >= 50 ? "orange" : "red" }}>
+                      {session.score}%
+                    </td>
+                    <td style={{ padding: 12, border: "1px solid #ddd", maxWidth: 400 }}>
+                      {session.feedback ? (
+                        <pre style={{ 
+                          background: "#f5f5f5", 
+                          padding: 8, 
+                          borderRadius: 4, 
+                          fontSize: 12, 
+                          margin: 0,
+                          overflow: "auto",
+                          maxHeight: 150,
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word"
+                        }}>
+                          {session.feedback}
+                        </pre>
+                      ) : (
+                        "No feedback"
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : (
           <p>No recent interviews</p>

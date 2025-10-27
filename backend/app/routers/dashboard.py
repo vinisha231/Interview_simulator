@@ -57,6 +57,7 @@ def get_history(db: Session = Depends(get_db)):
             "id": s.id,
             "type": s.interview_type,
             "question": s.question,
+            "user_answer": s.user_answer,
             "score": s.score,
             "feedback": s.feedback,
             "created_at": s.created_at
