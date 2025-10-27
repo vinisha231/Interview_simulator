@@ -114,8 +114,8 @@ export default function App() {
       </nav>
 
       {view === "interview" ? (
-        <div className="container" style={{ minHeight: "auto", padding: "40px 20px" }}>
-          <div className="card" style={{ margin: "0 auto" }}>
+        <div className="container">
+          <div className="card">
             <h1>INTERVIEW SIMULATOR</h1>
 
             <div style={{ marginBottom: 32, display: "flex", gap: 16, alignItems: "center", justifyContent: "center" }}>

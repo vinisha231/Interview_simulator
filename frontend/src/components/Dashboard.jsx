@@ -40,7 +40,7 @@ export default function Dashboard() {
   if (!stats || stats.total_sessions === 0) {
     return (
       <div className="container">
-        <div className="card" style={{ textAlign: "center", padding: 60 }}>
+        <div className="card">
           <h2>NO DATA YET</h2>
           <p style={{ fontSize: 12, color: "#FFFFFF" }}>COMPLETE INTERVIEWS TO SEE STATS</p>
         </div>
@@ -49,8 +49,8 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="container" style={{ minHeight: "auto", padding: "40px 20px" }}>
-      <div className="card" style={{ margin: "0 auto" }}>
+    <div className="container">
+      <div className="card">
         <h1>DASHBOARD</h1>
         
         {/* Stats Section */}
