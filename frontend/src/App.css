@@ -432,41 +432,40 @@ h2 {
 /* Table - Pixel Art Style */
 .table-container {
   overflow-x: auto;
-  border: 5px solid #34495E;
-  box-shadow: 0 8px 0 #1A252F;
-  image-rendering: pixelated;
+  border: 6px solid #1a252f;
+  box-shadow: 0 12px 0 #1a252f;
   margin-top: 24px;
 }
 
 .styled-table {
   width: 100%;
   border-collapse: collapse;
-  background: #2C3E50;
-  image-rendering: pixelated;
+  background: #2c3e50;
 }
 
 .styled-table thead {
-  background: #1A252F;
-  color: #FFFFFF;
+  background: #1a252f;
+  color: #ecf0f1;
 }
 
 .styled-table th {
-  padding: 16px;
+  padding: 14px;
   text-align: center;
-  font-size: 10px;
-  text-shadow: 2px 2px 0px #000;
-  border: 3px solid #34495E;
+  font-size: 9px;
+  font-weight: bold;
+  text-shadow: 2px 2px 0 #000;
+  border: 4px solid #34495e;
 }
 
 .styled-table td {
-  padding: 16px;
-  border: 3px solid #34495E;
-  background: #34495E;
-  color: #FFFFFF;
+  padding: 14px;
+  border: 4px solid #34495e;
+  background: #3d4f60;
+  color: #ecf0f1;
   font-size: 8px;
   text-align: center;
 }
 
 .styled-table tbody tr:hover {
-  background: #4A6741;
+  background: #4a5568;
 }
