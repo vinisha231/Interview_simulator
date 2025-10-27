@@ -41,9 +41,8 @@ export default function Dashboard() {
     return (
       <div className="container">
         <div className="card" style={{ textAlign: "center", padding: 60 }}>
-          <h1 style={{ fontSize: 64 }}>📊</h1>
-          <h2>No interview data yet</h2>
-          <p style={{ fontSize: 18, color: "#666" }}>Complete some interviews to see your stats here!</p>
+          <h2>NO DATA YET</h2>
+          <p style={{ fontSize: 12, color: "#FFFFFF" }}>COMPLETE INTERVIEWS TO SEE STATS</p>
         </div>
       </div>
     );
@@ -52,7 +51,7 @@ export default function Dashboard() {
   return (
     <div className="container">
       <div className="card">
-        <h1>📊 Interview Dashboard</h1>
+        <h1>DASHBOARD</h1>
         
         {/* Stats Section */}
         <div className="stats-grid">
@@ -74,8 +73,8 @@ export default function Dashboard() {
 
       {/* Average by Type */}
       {stats.average_by_type && Object.keys(stats.average_by_type).length > 0 && (
-        <div style={{ marginBottom: 40 }}>
-          <h2>📈 Average Scores by Type</h2>
+          <div style={{ marginBottom: 40 }}>
+          <h2>AVG SCORES BY TYPE</h2>
           <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
             {Object.entries(stats.average_by_type).map(([type, avg]) => (
               <div
@@ -94,10 +93,10 @@ export default function Dashboard() {
       {/* Strengths & Weaknesses */}
       {(stats.strengths?.length > 0 || stats.weaknesses?.length > 0) && (
         <div style={{ marginBottom: 40 }}>
-          <h2>Performance Insights</h2>
+          <h2>PERFORMANCE</h2>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
             <div style={{ border: "1px solid #ddd", padding: 16, borderRadius: 8 }}>
-              <h3 style={{ color: "green", margin: "0 0 12px 0" }}>Strengths</h3>
+              <h3 style={{ color: "#2ECC71", margin: "0 0 12px 0", fontSize: 14 }}>STRENGTHS</h3>
               {stats.strengths?.length > 0 ? (
                 <ul style={{ paddingLeft: 20, margin: 0 }}>
                   {stats.strengths.slice(0, 5).map((s, i) => (
@@ -112,7 +111,7 @@ export default function Dashboard() {
             </div>
             
             <div style={{ border: "1px solid #ddd", padding: 16, borderRadius: 8 }}>
-              <h3 style={{ color: "orange", margin: "0 0 12px 0" }}>Areas for Improvement</h3>
+              <h3 style={{ color: "#E67E22", margin: "0 0 12px 0", fontSize: 14 }}>IMPROVE</h3>
               {stats.weaknesses?.length > 0 ? (
                 <ul style={{ paddingLeft: 20, margin: 0 }}>
                   {stats.weaknesses.slice(0, 5).map((w, i) => (
@@ -131,18 +130,18 @@ export default function Dashboard() {
 
       {/* Recent History */}
       <div>
-        <h2>📋 Recent Interview History</h2>
+        <h2>RECENT HISTORY</h2>
         {history.length > 0 ? (
           <div className="table-container">
             <table className="styled-table">
               <thead>
                 <tr>
-                  <th>📅 Date</th>
-                  <th>💼 Type</th>
-                  <th>❓ Question</th>
-                  <th>✍️ Your Answer</th>
-                  <th>⭐ Score</th>
-                  <th>💬 Feedback (JSON)</th>
+                  <th>DATE</th>
+                  <th>TYPE</th>
+                  <th>QUESTION</th>
+                  <th>ANSWER</th>
+                  <th>SCORE</th>
+                  <th>FEEDBACK</th>
                 </tr>
               </thead>
               <tbody>

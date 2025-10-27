@@ -42,37 +42,36 @@ export default function Login({ onLogin, onSwitchToSignup }) {
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
       <div className="card" style={{ maxWidth: 450, width: "100%" }}>
-        <h2 style={{ marginBottom: 8, textAlign: "center" }}>🔐 Login</h2>
-        <p style={{ textAlign: "center", color: "#666", marginBottom: 32 }}>Welcome back! Please sign in to continue.</p>
+        <h2 style={{ marginBottom: 16, textAlign: "center" }}>LOGIN</h2>
         
         {error && (
-          <div className="alert alert-error">
-            ⚠️ {error}
+          <div className="alert alert-error" style={{ marginBottom: 24, textAlign: "center", fontSize: 10 }}>
+            ERROR: {error}
           </div>
         )}
 
         <form onSubmit={handleLogin}>
           <div className="input-group">
-            <label className="input-label">👤 Username</label>
+            <label className="input-label">USERNAME</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
               className="form-input"
-              placeholder="Enter your username"
+              placeholder="USERNAME"
             />
           </div>
 
           <div className="input-group">
-            <label className="input-label">🔒 Password</label>
+            <label className="input-label">PASSWORD</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               className="form-input"
-              placeholder="Enter your password"
+              placeholder="PASSWORD"
             />
           </div>
 
@@ -82,17 +81,17 @@ export default function Login({ onLogin, onSwitchToSignup }) {
             className="btn-primary"
             style={{ width: "100%" }}
           >
-            {loading ? "⏳ Logging in..." : "🚀 Login"}
+            {loading ? "LOGGING IN..." : "LOGIN"}
           </button>
         </form>
 
-        <p style={{ marginTop: 24, textAlign: "center", color: "#666" }}>
-          Don't have an account?{" "}
+        <p style={{ marginTop: 32, textAlign: "center", color: "#FFFFFF", fontSize: 10 }}>
+          NO ACCOUNT?{" "}
           <button
             onClick={onSwitchToSignup}
-            style={{ background: "none", border: "none", color: "#667eea", cursor: "pointer", textDecoration: "underline", fontWeight: 600 }}
+            style={{ background: "none", border: "none", color: "#3498DB", cursor: "pointer", textDecoration: "underline", fontFamily: "'Press Start 2P', cursive", fontSize: 10 }}
           >
-            Sign up here ✨
+            SIGN UP
           </button>
         </p>
       </div>

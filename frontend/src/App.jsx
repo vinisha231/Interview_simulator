@@ -96,20 +96,19 @@ export default function App() {
   // ----------------- UI Starts Here -----------------
   return (
     <div className="app-container">
-      {/* Cute nav bar */}
       <nav className="nav-bar">
         <div className="nav-buttons">
           <button className="nav-btn" onClick={() => setView("interview")}>
-            🎤 Interview
+            INTERVIEW
           </button>
           <button className="nav-btn" onClick={() => setView("dashboard")}>
-            📊 Dashboard
+            DASHBOARD
           </button>
         </div>
         <div className="user-info">
-          <span className="welcome-text">Welcome, {user.username}! 👋</span>
+          <span className="welcome-text">WELCOME {user.username.toUpperCase()}</span>
           <button className="logout-btn" onClick={handleLogout}>
-            Logout
+            LOGOUT
           </button>
         </div>
       </nav>
@@ -117,11 +116,11 @@ export default function App() {
       {view === "interview" ? (
         <div className="container">
           <div className="card">
-            <h1>🎯 LLM Interview Simulator</h1>
+            <h1>INTERVIEW SIMULATOR</h1>
 
-            <div style={{ marginBottom: 24, display: "flex", gap: 12, alignItems: "center" }}>
+            <div style={{ marginBottom: 32, display: "flex", gap: 16, alignItems: "center", justifyContent: "center" }}>
               <label className="input-label" style={{ marginBottom: 0 }}>
-                Interview Type:
+                TYPE:
               </label>
               <select 
                 value={type} 
@@ -129,24 +128,24 @@ export default function App() {
                 className="form-input"
                 style={{ width: "auto", marginRight: 12 }}
               >
-                <option value="technical">💻 Technical</option>
-                <option value="behavioral">🤝 Behavioral</option>
+                <option value="technical">TECHNICAL</option>
+                <option value="behavioral">BEHAVIORAL</option>
               </select>
               <button
                 className="btn-primary"
                 onClick={getQuestion}
                 disabled={loading}
               >
-                {loading ? "⏳ Loading..." : "🎲 Generate Question"}
+                {loading ? "LOADING..." : "GENERATE Q"}
               </button>
             </div>
 
             {question && (
               <div className="question-box">
-                <strong style={{ display: "block", marginBottom: 8, fontSize: 18 }}>
-                  💡 Question:
+                <strong style={{ display: "block", marginBottom: 12 }}>
+                  QUESTION:
                 </strong>
-                <p style={{ margin: 0, fontSize: 16 }}>{question}</p>
+                <p>{question}</p>
               </div>
             )}
 
@@ -155,10 +154,10 @@ export default function App() {
                 <textarea
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
-                  placeholder="Type your answer here..."
+                  placeholder="TYPE YOUR ANSWER..."
                   rows={8}
                   className="form-input"
-                  style={{ width: "100%", marginBottom: 16, fontFamily: "inherit", resize: "vertical" }}
+                  style={{ width: "100%", marginBottom: 20, fontFamily: "inherit", resize: "vertical" }}
                 />
                 <button 
                   className="btn-secondary"
@@ -166,22 +165,24 @@ export default function App() {
                   disabled={loading || !answer.trim()}
                   style={{ width: "100%" }}
                 >
-                  {loading ? "⏳ Evaluating..." : "🚀 Submit Answer"}
+                  {loading ? "EVALUATING..." : "SUBMIT ANSWER"}
                 </button>
               </>
             )}
 
             {feedback && (
               <div className="feedback-box">
-                <strong style={{ display: "block", marginBottom: 12, fontSize: 18 }}>
-                  ✨ Feedback:
+                <strong style={{ display: "block", marginBottom: 16 }}>
+                  FEEDBACK:
                 </strong>
                 <pre style={{ 
-                  background: "white", 
+                  background: "#2C3E50", 
                   padding: 16, 
-                  borderRadius: 8, 
+                  color: "#FFFFFF",
                   overflow: "auto",
-                  maxHeight: 300 
+                  maxHeight: 300,
+                  fontSize: 8,
+                  lineHeight: "1.6"
                 }}>
                   {JSON.stringify(feedback, null, 2)}
                 </pre>

@@ -43,60 +43,59 @@ export default function SignUp({ onSignup, onSwitchToLogin }) {
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
       <div className="card" style={{ maxWidth: 450, width: "100%" }}>
-        <h2 style={{ marginBottom: 8, textAlign: "center" }}>✨ Sign Up</h2>
-        <p style={{ textAlign: "center", color: "#666", marginBottom: 32 }}>Create your account to start practicing interviews!</p>
+        <h2 style={{ marginBottom: 16, textAlign: "center" }}>SIGN UP</h2>
         
         {error && (
-          <div className="alert alert-error">
-            ⚠️ {error}
+          <div className="alert alert-error" style={{ marginBottom: 24, textAlign: "center", fontSize: 10 }}>
+            ERROR: {error}
           </div>
         )}
 
         <form onSubmit={handleSignup}>
           <div className="input-group">
-            <label className="input-label">👤 Full Name</label>
+            <label className="input-label">FULL NAME</label>
             <input
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               className="form-input"
-              placeholder="Enter your full name"
+              placeholder="FULL NAME"
             />
           </div>
 
           <div className="input-group">
-            <label className="input-label">🔑 Username</label>
+            <label className="input-label">USERNAME</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
               className="form-input"
-              placeholder="Choose a username"
+              placeholder="USERNAME"
             />
           </div>
 
           <div className="input-group">
-            <label className="input-label">📧 Email</label>
+            <label className="input-label">EMAIL</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               className="form-input"
-              placeholder="your@email.com"
+              placeholder="EMAIL"
             />
           </div>
 
           <div className="input-group">
-            <label className="input-label">🔒 Password</label>
+            <label className="input-label">PASSWORD</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               className="form-input"
-              placeholder="Create a password"
+              placeholder="PASSWORD"
             />
           </div>
 
@@ -106,17 +105,17 @@ export default function SignUp({ onSignup, onSwitchToLogin }) {
             className="btn-secondary"
             style={{ width: "100%" }}
           >
-            {loading ? "⏳ Creating account..." : "🎉 Sign Up"}
+            {loading ? "CREATING..." : "SIGN UP"}
           </button>
         </form>
 
-        <p style={{ marginTop: 24, textAlign: "center", color: "#666" }}>
-          Already have an account?{" "}
+        <p style={{ marginTop: 32, textAlign: "center", color: "#FFFFFF", fontSize: 10 }}>
+          HAVE ACCOUNT?{" "}
           <button
             onClick={onSwitchToLogin}
-            style={{ background: "none", border: "none", color: "#667eea", cursor: "pointer", textDecoration: "underline", fontWeight: 600 }}
+            style={{ background: "none", border: "none", color: "#3498DB", cursor: "pointer", textDecoration: "underline", fontFamily: "'Press Start 2P', cursive", fontSize: 10 }}
           >
-            Login here 🔐
+            LOGIN
           </button>
         </p>
       </div>
