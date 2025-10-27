@@ -49,8 +49,8 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="container">
-      <div className="card">
+    <div className="container" style={{ minHeight: "auto", padding: "40px 20px" }}>
+      <div className="card" style={{ margin: "0 auto" }}>
         <h1>DASHBOARD</h1>
         
         {/* Stats Section */}

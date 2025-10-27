@@ -12,61 +12,33 @@
 body {
   margin: 0;
   font-family: 'Silkscreen', cursive, monospace;
-  background: #1e3a5f;
+  background: 
+    /* Sky gradient */
+    linear-gradient(to bottom, #87CEEB 0%, #87CEEB 40%, #4a90e2 60%, #1e3a5f 100%);
   min-height: 100vh;
-  position: relative;
-  overflow-x: hidden;
   background-image: 
-    /* Pixel grid background */
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 2px,
-      rgba(40, 60, 90, 0.3) 2px,
-      rgba(40, 60, 90, 0.3) 4px
-    ),
+    /* Pixelated trees in background */
+    /* Tree 1 */
     repeating-linear-gradient(
       0deg,
       transparent,
-      transparent 2px,
-      rgba(40, 60, 90, 0.3) 2px,
-      rgba(40, 60, 90, 0.3) 4px
+      transparent 8px,
+      #27ae60 8px,
+      #27ae60 16px
+    ),
+    /* City buildings silhouette */
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 20px,
+      rgba(40, 60, 90, 0.4) 20px,
+      rgba(40, 60, 90, 0.4) 24px
     );
-}
-
-/* Pixelated trees in background */
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 0;
-  background-image: 
-    /* Tall tree left */
-    radial-gradient(ellipse at 10% 20%, #4a6741 0%, #4a6741 8px, transparent 8px, transparent 24px),
-    radial-gradient(ellipse at 10% 15%, #3d5333 0%, #3d5333 6px, #4a6741 6px, #4a6741 12px, transparent 12px, transparent 20px),
-    /* Bush center-left */
-    radial-gradient(ellipse at 35% 25%, #90EE90 0%, #90EE90 12px, #4a6741 12px, #4a6741 16px, transparent 16px, transparent 28px),
-    /* Tree right */
-    radial-gradient(ellipse at 90% 30%, #4a6741 0%, #4a6741 10px, transparent 10px, transparent 26px),
-    radial-gradient(ellipse at 90% 25%, #3d5333 0%, #3d5333 8px, #4a6741 8px, #4a6741 14px, transparent 14px, transparent 22px),
-    /* Small bush bottom */
-    radial-gradient(ellipse at 75% 35%, #90EE90 0%, #90EE90 8px, #4a6741 8px, #4a6741 12px, transparent 12px, transparent 20px);
-  background-size: 100% 100%;
+  background-position: 0 0;
 }
 
 .app-container {
   min-height: 100vh;
-  position: relative;
-  z-index: 1;
-}
-
-.card, .container, .nav-bar {
-  position: relative;
-  z-index: 2;
 }
 
 /* Nav Bar - Pixel Art Urban Style */
@@ -165,11 +137,19 @@ body::before {
 /* Container - Pixel Art Urban */
 .container {
   max-width: 900px;
-  margin: 40px auto;
-  padding: 20px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 80px);
 }
 
 .card {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
   background: #34495e;
   border: 6px solid #1a252f;
   padding: 32px;
