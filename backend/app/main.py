@@ -18,7 +18,7 @@ Author: LLM Interview Simulator Team
 # Import necessary libraries
 from fastapi import FastAPI  # FastAPI framework for building APIs
 from fastapi.middleware.cors import CORSMiddleware  # Middleware for handling CORS
-from app.routers import interview  # Import our interview API routes
+from app.routers import interview, sessions, dashboard  # Import both routers # Import our interview API routes
 import os  # For environment variables
 from dotenv import load_dotenv  # For loading .env files
 import uvicorn  # ASGI server for running FastAPI
@@ -46,9 +46,10 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
-# Include our interview router
-# This connects all the interview-related API endpoints to our main app
+# Include all API routers
 app.include_router(interview.router)
+app.include_router(sessions.router)
+app.include_router(dashboard.router)
 
 # Define the root endpoint
 # This is the first endpoint users will hit when they visit our API

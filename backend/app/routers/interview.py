@@ -23,6 +23,9 @@ from pydantic import BaseModel  # Data validation and serialization
 from typing import Optional, List  # Type hints for better code documentation
 import asyncio  # For asynchronous operations
 
+# Import Bedrock service
+from app.services.bedrock_service import get_bedrock_service
+
 # Create a router for interview-related endpoints
 # prefix="/api/interview" means all routes will start with /api/interview/
 # tags=["interview"] groups these endpoints in the API documentation
@@ -77,7 +80,6 @@ async def get_interview_questions():
         dict: A dictionary containing a list of sample questions
     """
     # Sample interview questions for demonstration
-    # In a real application, these would come from a database
     sample_questions = [
         "Explain the difference between REST and GraphQL APIs.",
         "How would you optimize a slow database query?",
@@ -86,20 +88,46 @@ async def get_interview_questions():
         "How do you handle errors in a distributed system?"
     ]
     
-    # Return the questions in a JSON response
     return {"questions": sample_questions}
+
+
+# Define an endpoint to generate a new interview question using Bedrock
+@router.get("/generate-question")
+async def generate_question(interview_type: str = "technical", difficulty: str = "medium"):
+    """
+    Generate a new interview question using AWS Bedrock.
+    
+    This endpoint uses Claude/Llama to generate contextual interview questions.
+    
+    Args:
+        interview_type: Type of interview (technical, behavioral, system_design)
+        difficulty: Difficulty level (easy, medium, hard)
+    
+    Returns:
+        dict: Generated question
+    """
+    try:
+        bedrock = get_bedrock_service()
+        question = bedrock.generate_question(interview_type, difficulty)
+        
+        return {
+            "question": question,
+            "interview_type": interview_type,
+            "difficulty": difficulty
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating question: {str(e)}")
 
 # Define an endpoint to evaluate user answers
 @router.post("/evaluate", response_model=InterviewResponse)
 async def evaluate_answer(request: InterviewRequest):
     """
-    Evaluate a user's answer to an interview question.
+    Evaluate a user's answer to an interview question using AWS Bedrock.
     
     This endpoint:
     - Responds to POST requests at /api/interview/evaluate
-    - Accepts a JSON request with question, answer, and interview type
-    - Returns detailed feedback, score, and suggestions
-    - Currently uses mock evaluation (will be replaced with real LLM integration)
+    - Uses AWS Bedrock (Claude/Llama) to evaluate the answer
+    - Returns detailed feedback, scores, and suggestions
     
     Args:
         request (InterviewRequest): The interview evaluation request data
@@ -111,35 +139,37 @@ async def evaluate_answer(request: InterviewRequest):
         HTTPException: If there's an error during evaluation
     """
     try:
-        # Simulate processing time (in real app, this would be LLM processing)
-        # await asyncio.sleep(1) means "wait for 1 second"
-        await asyncio.sleep(1)
+        # Get Bedrock service instance
+        bedrock = get_bedrock_service()
         
-        # Mock evaluation logic - this will be replaced with actual LLM integration
-        # In a real application, this would:
-        # 1. Send the question and answer to an LLM (like OpenAI GPT)
-        # 2. Get detailed feedback and scoring
-        # 3. Return structured results
-        feedback = f"Good attempt at answering: '{request.question}'. Your answer shows understanding of the topic."
-        score = 75  # Mock score (0-100 scale)
-        suggestions = [
-            "Provide more specific examples",
-            "Consider edge cases",
-            "Explain your reasoning step by step"
-        ]
+        # Evaluate the answer using Bedrock
+        evaluation = bedrock.evaluate_answer(
+            question=request.question,
+            user_answer=request.user_answer,
+            interview_type=request.interview_type
+        )
         
-        # Create and return the response using our Pydantic model
-        # This ensures the response matches our defined structure
+        # Bedrock returns scores on 1-5 scale, convert to 0-100 for overall score
+        communication = evaluation.get("communication_score", 3)
+        technical = evaluation.get("technical_score", 3)
+        problem_solving = evaluation.get("problem_solving_score", 3)
+        professional = evaluation.get("professional_tone_score", 3)
+        
+        # Calculate overall score (average of all scores, scaled to 0-100)
+        overall_score = int(((communication + technical + problem_solving + professional) / 4) * 20)
+        
+        # Get suggestions
+        suggestions = evaluation.get("suggestions", [])
+        
+        # Create and return the response
         return InterviewResponse(
-            feedback=feedback,
-            score=score,
+            feedback=evaluation.get("feedback", "No feedback provided."),
+            score=overall_score,
             suggestions=suggestions
         )
         
     except Exception as e:
-        # If something goes wrong, return a proper HTTP error
-        # This prevents the application from crashing and gives the client useful error info
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error evaluating answer: {str(e)}")
 
 # Define an endpoint to get available interview types
 @router.get("/types")
