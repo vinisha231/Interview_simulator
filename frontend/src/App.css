@@ -13,28 +13,77 @@ body {
   margin: 0;
   font-family: 'Silkscreen', cursive, monospace;
   background: 
-    /* Sky gradient */
-    linear-gradient(to bottom, #87CEEB 0%, #87CEEB 40%, #4a90e2 60%, #1e3a5f 100%);
+    /* Sky gradient - night blue to darker blue */
+    linear-gradient(to bottom, #1e3a5f 0%, #1e3a5f 60%, #2c3e50 60%, #1a252f 100%);
   min-height: 100vh;
-  background-image: 
-    /* Pixelated trees in background */
-    /* Tree 1 */
+  position: relative;
+}
+
+/* Pixelated tree pattern background */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    /* Pixelated tree foliage patterns */
+    repeating-linear-gradient(
+      15deg,
+      transparent,
+      transparent 28px,
+      rgba(34, 120, 60, 0.35) 28px,
+      rgba(34, 120, 60, 0.35) 36px
+    ),
+    repeating-linear-gradient(
+      -15deg,
+      transparent,
+      transparent 32px,
+      rgba(52, 152, 90, 0.4) 32px,
+      rgba(52, 152, 90, 0.4) 40px
+    ),
+    /* Horizontal tree layers */
     repeating-linear-gradient(
       0deg,
       transparent,
-      transparent 8px,
-      #27ae60 8px,
-      #27ae60 16px
+      transparent 24px,
+      rgba(34, 120, 60, 0.25) 24px,
+      rgba(34, 120, 60, 0.25) 32px
     ),
-    /* City buildings silhouette */
+    #1e3a5f;
+  z-index: -1;
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
+/* City buildings and grid */
+body::after {
+  content: '';
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  background: 
+    /* Building windows grid */
     repeating-linear-gradient(
       90deg,
       transparent,
-      transparent 20px,
-      rgba(40, 60, 90, 0.4) 20px,
-      rgba(40, 60, 90, 0.4) 24px
+      transparent 16px,
+      rgba(30, 58, 95, 0.4) 16px,
+      rgba(30, 58, 95, 0.4) 24px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 16px,
+      rgba(30, 58, 95, 0.3) 16px,
+      rgba(30, 58, 95, 0.3) 24px
     );
-  background-position: 0 0;
+  z-index: -1;
+  pointer-events: none;
+  image-rendering: pixelated;
 }
 
 .app-container {
