@@ -1,13 +1,37 @@
-import { useState } from "react";
-import Dashboard from "./Dashboard"; // <-- NEW import
+import { useState, useEffect } from "react";
+import Dashboard from "./Dashboard";
+import Login from "./components/Login";
+import SignUp from "./components/SignUp";
 
 export default function App() {
-  const [view, setView] = useState("interview"); // <-- NEW state for switching
+  const [authView, setAuthView] = useState("login"); // "login" or "signup"
+  const [user, setUser] = useState(null);
+  const [view, setView] = useState("interview");
   const [type, setType] = useState("technical");
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Check if user is logged in on mount
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const userData = localStorage.getItem("user");
+    if (token && userData) {
+      setUser(JSON.parse(userData));
+    }
+  }, []);
+
+  const handleLogin = (userData) => {
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
+    setView("interview");
+  };
 
   const getQuestion = async () => {
     setLoading(true);
@@ -59,13 +83,28 @@ export default function App() {
     }
   };
 
+  // Show login/signup if not authenticated
+  if (!user) {
+    return authView === "login" ? (
+      <Login onLogin={handleLogin} onSwitchToSignup={() => setAuthView("signup")} />
+    ) : (
+      <SignUp onSignup={handleLogin} onSwitchToLogin={() => setAuthView("login")} />
+    );
+  }
+
   // ----------------- UI Starts Here -----------------
   return (
     <div style={{ fontFamily: "Inter, sans-serif" }}>
       {/* Simple nav to switch views */}
-      <nav style={{ padding: 10, borderBottom: "1px solid #ddd" }}>
-        <button onClick={() => setView("interview")}>Interview</button>
-        <button onClick={() => setView("dashboard")}>Dashboard</button>
+      <nav style={{ padding: 10, borderBottom: "1px solid #ddd", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <button onClick={() => setView("interview")} style={{ marginRight: 8 }}>Interview</button>
+          <button onClick={() => setView("dashboard")}>Dashboard</button>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span>Welcome, {user.username}!</span>
+          <button onClick={handleLogout} style={{ background: "#dc3545", color: "white", border: "none", padding: "6px 12px", borderRadius: 4 }}>Logout</button>
+        </div>
       </nav>
 
       {view === "interview" ? (
