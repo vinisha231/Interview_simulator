@@ -40,64 +40,62 @@ export default function Login({ onLogin, onSwitchToSignup }) {
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: "100px auto", padding: 40, border: "1px solid #ddd", borderRadius: 8 }}>
-      <h2 style={{ marginBottom: 24 }}>Login</h2>
-      
-      {error && (
-        <div style={{ padding: 12, background: "#fee", color: "red", borderRadius: 4, marginBottom: 16 }}>
-          {error}
-        </div>
-      )}
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div className="card" style={{ maxWidth: 450, width: "100%" }}>
+        <h2 style={{ marginBottom: 8, textAlign: "center" }}>🔐 Login</h2>
+        <p style={{ textAlign: "center", color: "#666", marginBottom: 32 }}>Welcome back! Please sign in to continue.</p>
+        
+        {error && (
+          <div className="alert alert-error">
+            ⚠️ {error}
+          </div>
+        )}
 
-      <form onSubmit={handleLogin}>
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: "block", marginBottom: 8 }}>Username</label>
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-            style={{ width: "100%", padding: 8, borderRadius: 4, border: "1px solid #ddd" }}
-          />
-        </div>
+        <form onSubmit={handleLogin}>
+          <div className="input-group">
+            <label className="input-label">👤 Username</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              className="form-input"
+              placeholder="Enter your username"
+            />
+          </div>
 
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: "block", marginBottom: 8 }}>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{ width: "100%", padding: 8, borderRadius: 4, border: "1px solid #ddd" }}
-          />
-        </div>
+          <div className="input-group">
+            <label className="input-label">🔒 Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="form-input"
+              placeholder="Enter your password"
+            />
+          </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            width: "100%",
-            padding: 12,
-            background: "#007bff",
-            color: "white",
-            border: "none",
-            borderRadius: 4,
-            cursor: loading ? "not-allowed" : "pointer",
-          }}
-        >
-          {loading ? "Logging in..." : "Login"}
-        </button>
-      </form>
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-primary"
+            style={{ width: "100%" }}
+          >
+            {loading ? "⏳ Logging in..." : "🚀 Login"}
+          </button>
+        </form>
 
-      <p style={{ marginTop: 16, textAlign: "center" }}>
-        Don't have an account?{" "}
-        <button
-          onClick={onSwitchToSignup}
-          style={{ background: "none", border: "none", color: "#007bff", cursor: "pointer", textDecoration: "underline" }}
-        >
-          Sign up
-        </button>
-      </p>
+        <p style={{ marginTop: 24, textAlign: "center", color: "#666" }}>
+          Don't have an account?{" "}
+          <button
+            onClick={onSwitchToSignup}
+            style={{ background: "none", border: "none", color: "#667eea", cursor: "pointer", textDecoration: "underline", fontWeight: 600 }}
+          >
+            Sign up here ✨
+          </button>
+        </p>
+      </div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import "../App.css";
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
@@ -30,66 +31,60 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div style={{ textAlign: "center", padding: 40 }}>
-        <p>Loading dashboard...</p>
+      <div className="loading">
+        <p>⏳ Loading dashboard...</p>
       </div>
     );
   }
 
   if (!stats || stats.total_sessions === 0) {
     return (
-      <div style={{ textAlign: "center", padding: 40 }}>
-        <h2>No interview data yet</h2>
-        <p>Complete some interviews to see your stats here!</p>
+      <div className="container">
+        <div className="card" style={{ textAlign: "center", padding: 60 }}>
+          <h1 style={{ fontSize: 64 }}>📊</h1>
+          <h2>No interview data yet</h2>
+          <p style={{ fontSize: 18, color: "#666" }}>Complete some interviews to see your stats here!</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: 1200, margin: "20px auto", padding: 20 }}>
-      <h1>Interview Dashboard</h1>
-      
-      {/* Stats Section */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 20, marginBottom: 40 }}>
-        <div style={{ border: "1px solid #ddd", padding: 20, borderRadius: 8 }}>
-          <h3 style={{ margin: "0 0 10px 0", color: "#666" }}>Total Sessions</h3>
-          <p style={{ fontSize: 32, margin: 0, fontWeight: "bold" }}>{stats.total_sessions}</p>
-        </div>
+    <div className="container">
+      <div className="card">
+        <h1>📊 Interview Dashboard</h1>
         
-        <div style={{ border: "1px solid #ddd", padding: 20, borderRadius: 8 }}>
-          <h3 style={{ margin: "0 0 10px 0", color: "#666" }}>Average Score</h3>
-          <p style={{ fontSize: 32, margin: 0, fontWeight: "bold", color: stats.average_score >= 70 ? "green" : "orange" }}>
-            {stats.average_score.toFixed(1)}
-          </p>
+        {/* Stats Section */}
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-label">Total Sessions</div>
+            <div className="stat-value">{stats.total_sessions}</div>
+          </div>
+          
+          <div className="stat-card" style={{ background: stats.average_score >= 70 ? "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)" : "linear-gradient(135deg, #fa8bff 0%, #2bd2ff 100%)" }}>
+            <div className="stat-label">Average Score</div>
+            <div className="stat-value">{stats.average_score.toFixed(1)}</div>
+          </div>
+          
+          <div className="stat-card" style={{ background: "linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%)", color: "#333" }}>
+            <div className="stat-label" style={{ color: "#555" }}>Interview Types</div>
+            <div className="stat-value" style={{ color: "#333" }}>{Object.keys(stats.average_by_type || {}).length}</div>
+          </div>
         </div>
-        
-        <div style={{ border: "1px solid #ddd", padding: 20, borderRadius: 8 }}>
-          <h3 style={{ margin: "0 0 10px 0", color: "#666" }}>Interview Types</h3>
-          <p style={{ fontSize: 32, margin: 0, fontWeight: "bold" }}>
-            {Object.keys(stats.average_by_type || {}).length}
-          </p>
-        </div>
-      </div>
 
       {/* Average by Type */}
       {stats.average_by_type && Object.keys(stats.average_by_type).length > 0 && (
         <div style={{ marginBottom: 40 }}>
-          <h2>Average Scores by Type</h2>
+          <h2>📈 Average Scores by Type</h2>
           <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
             {Object.entries(stats.average_by_type).map(([type, avg]) => (
               <div
                 key={type}
-                style={{
-                  border: "1px solid #ddd",
-                  padding: 16,
-                  borderRadius: 8,
-                  flex: "1 1 200px",
-                }}
+                className="stat-card"
+                style={{ minWidth: 200 }}
               >
-                <h3 style={{ margin: "0 0 8px 0", textTransform: "capitalize" }}>{type}</h3>
-                <p style={{ fontSize: 24, margin: 0, fontWeight: "bold" }}>
-                  {avg.toFixed(1)}
-                </p>
+                <div className="stat-label">{type.charAt(0).toUpperCase() + type.slice(1)}</div>
+                <div className="stat-value">{avg.toFixed(1)}</div>
               </div>
             ))}
           </div>
@@ -136,45 +131,45 @@ export default function Dashboard() {
 
       {/* Recent History */}
       <div>
-        <h2>Recent Interview History</h2>
+        <h2>📋 Recent Interview History</h2>
         {history.length > 0 ? (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #ddd" }}>
+          <div className="table-container">
+            <table className="styled-table">
               <thead>
-                <tr style={{ background: "#f5f5f5" }}>
-                  <th style={{ padding: 12, border: "1px solid #ddd", textAlign: "left" }}>Date</th>
-                  <th style={{ padding: 12, border: "1px solid #ddd", textAlign: "left" }}>Type</th>
-                  <th style={{ padding: 12, border: "1px solid #ddd", textAlign: "left" }}>Question</th>
-                  <th style={{ padding: 12, border: "1px solid #ddd", textAlign: "left" }}>Your Answer</th>
-                  <th style={{ padding: 12, border: "1px solid #ddd", textAlign: "center" }}>Score</th>
-                  <th style={{ padding: 12, border: "1px solid #ddd", textAlign: "left" }}>Feedback (JSON)</th>
+                <tr>
+                  <th>📅 Date</th>
+                  <th>💼 Type</th>
+                  <th>❓ Question</th>
+                  <th>✍️ Your Answer</th>
+                  <th>⭐ Score</th>
+                  <th>💬 Feedback (JSON)</th>
                 </tr>
               </thead>
               <tbody>
                 {history.map((session) => (
                   <tr key={session.id}>
-                    <td style={{ padding: 12, border: "1px solid #ddd" }}>
+                    <td>
                       {new Date(session.created_at).toLocaleDateString()}
                     </td>
-                    <td style={{ padding: 12, border: "1px solid #ddd", textTransform: "capitalize" }}>
+                    <td style={{ textTransform: "capitalize" }}>
                       {session.type}
                     </td>
-                    <td style={{ padding: 12, border: "1px solid #ddd", maxWidth: 300, wordBreak: "break-word" }}>
+                    <td style={{ maxWidth: 300, wordBreak: "break-word" }}>
                       {session.question}
                     </td>
-                    <td style={{ padding: 12, border: "1px solid #ddd", maxWidth: 300, wordBreak: "break-word" }}>
+                    <td style={{ maxWidth: 300, wordBreak: "break-word" }}>
                       {session.user_answer || "No answer provided"}
                     </td>
-                    <td style={{ padding: 12, border: "1px solid #ddd", textAlign: "center", fontWeight: "bold", color: session.score >= 70 ? "green" : session.score >= 50 ? "orange" : "red" }}>
+                    <td style={{ textAlign: "center", fontWeight: "bold", color: session.score >= 70 ? "#2ecc71" : session.score >= 50 ? "#f39c12" : "#e74c3c" }}>
                       {session.score}%
                     </td>
-                    <td style={{ padding: 12, border: "1px solid #ddd", maxWidth: 400 }}>
+                    <td style={{ maxWidth: 400 }}>
                       {session.feedback ? (
                         <pre style={{ 
                           background: "#f5f5f5", 
                           padding: 8, 
-                          borderRadius: 4, 
-                          fontSize: 12, 
+                          borderRadius: 8, 
+                          fontSize: 11, 
                           margin: 0,
                           overflow: "auto",
                           maxHeight: 150,
@@ -184,7 +179,7 @@ export default function Dashboard() {
                           {session.feedback}
                         </pre>
                       ) : (
-                        "No feedback"
+                        <span style={{ color: "#999" }}>No feedback</span>
                       )}
                     </td>
                   </tr>
@@ -193,7 +188,7 @@ export default function Dashboard() {
             </table>
           </div>
         ) : (
-          <p>No recent interviews</p>
+          <p style={{ textAlign: "center", color: "#999" }}>No recent interviews</p>
         )}
       </div>
     </div>
