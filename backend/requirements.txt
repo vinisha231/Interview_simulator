@@ -49,3 +49,8 @@ httpx==0.25.2                # Async HTTP client for API calls
 # CORS and middleware
 #python-cors==1.0.0            # CORS middleware (if needed beyond FastAPI)
 requests==2.32.3
+
+# Authentication and security
+python-jose[cryptography]==3.3.0  # JWT token handling
+bcrypt==4.1.2                    # Password hashing
+passlib[bcrypt]==1.7.4           # Password hashing library
