@@ -4,10 +4,11 @@ LLM Powered Interview Simulator, 26th October 2025
 
 1.	Key design/development/learning accomplishments 
 •	Design:
-•	Implemented pixelated urban rooftop aesthetic with Silkscreen font
-•	Added 3D block-style buttons with inset shadows for authentic pixel art feel
-•	Created centered, card-based layout matching urban cityscape theme
-•	Designed beautiful pixel art background with trees and grid pattern
+•	Iterated through multiple UI themes (pixel art, pixelated, professional)
+•	Finalized on clean, modern professional interview platform design
+•	Implemented responsive design with 90% viewport sizing
+•	Professional color scheme (blue/white) with modern shadows and hover effects
+•	Responsive boxes that adapt to screen size (mobile, tablet, desktop)
 
 •	Development:
 •	Completed AWS Bedrock integration for AI-powered interview questions and evaluations
@@ -49,6 +50,8 @@ WHAT COULD BE IMPROVED:
 - Could test the deployment to production AWS environments sooner
 - Could add more detailed error handling for edge cases
 - Could implement email notifications for password reset
+- UI design iteration took time - should have settled on theme earlier
+- Need to focus on deployment and testing
 
  
 
@@ -80,3 +83,5 @@ Functionality Completed:
 •	Implement voice recording UI components
 •	Production testing and optimization
 •	Add email verification for user registration
+•	Refine UI to professional interview platform aesthetic
+•	Ensure responsive design for all screen sizes
