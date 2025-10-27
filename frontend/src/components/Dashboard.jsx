@@ -40,7 +40,7 @@ export default function Dashboard() {
   if (!stats || stats.total_sessions === 0) {
     return (
       <div className="container">
-        <div className="card">
+        <div className="card" style={{ width: '99vw', height: '99vh' }}>
           <h2>NO DATA YET</h2>
           <p style={{ fontSize: 12, color: "#FFFFFF" }}>COMPLETE INTERVIEWS TO SEE STATS</p>
         </div>
@@ -50,7 +50,7 @@ export default function Dashboard() {
 
   return (
     <div className="container">
-      <div className="card">
+      <div className="card" style={{ width: '99vw', height: '99vh' }}>
         <h1>Interview Dashboard</h1>
         
         {/* Stats Section */}
