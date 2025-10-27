@@ -51,7 +51,7 @@ export default function Dashboard() {
   return (
     <div className="container">
       <div className="card">
-        <h1>DASHBOARD</h1>
+        <h1>Interview Dashboard</h1>
         
         {/* Stats Section */}
         <div className="stats-grid">

@@ -116,7 +116,7 @@ export default function App() {
       {view === "interview" ? (
         <div className="container">
           <div className="card">
-            <h1>INTERVIEW SIMULATOR</h1>
+            <h1>Interview Simulator</h1>
 
             <div style={{ marginBottom: 32, display: "flex", gap: 16, alignItems: "center", justifyContent: "center" }}>
               <label className="input-label" style={{ marginBottom: 0 }}>
