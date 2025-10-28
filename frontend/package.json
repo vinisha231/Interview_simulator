@@ -4,11 +4,11 @@
   "description": "LLM-Powered Interview Simulator with AWS Bedrock",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "build:dev": "vite build --mode development",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "dev": "npx vite",
+    "build": "npx vite build",
+    "build:dev": "npx vite build --mode development",
+    "lint": "npx eslint .",
+    "preview": "npx vite preview"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
