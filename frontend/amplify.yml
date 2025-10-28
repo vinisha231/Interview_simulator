@@ -1,19 +1,12 @@
-# AWS Amplify Build Settings for LLM Interview Simulator
-
-# Build configuration
 version: 1
 frontend:
   phases:
     preBuild:
       commands:
-        - echo "Installing dependencies..."
         - npm ci
-        - echo "Dependencies installed successfully"
     build:
       commands:
-        - echo "Building the application..."
         - npm run build
-        - echo "Build completed successfully"
   artifacts:
     baseDirectory: dist
     files:
@@ -21,8 +14,3 @@ frontend:
   cache:
     paths:
       - node_modules/**/*
-      - .npm/**/*
-
-# Environment variables (set these in Amplify console)
-# VITE_API_URL=https://your-backend-url.com
-# VITE_AWS_REGION=us-east-1

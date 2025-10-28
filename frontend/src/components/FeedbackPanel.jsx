@@ -1,1 +1,0 @@
-// Displays scores and comments
