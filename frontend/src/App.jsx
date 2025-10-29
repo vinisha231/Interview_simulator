@@ -11,6 +11,8 @@ export default function App() {
   const [feedback, setFeedback] = useState("");
   const [score, setScore] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -141,6 +143,43 @@ export default function App() {
       alert("Error generating next question. Please try again.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchDashboardData = async () => {
+    setDashboardLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      
+      // Fetch statistics
+      const statsResponse = await fetch("/api/dashboard/stats", {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      // Fetch history
+      const historyResponse = await fetch("/api/dashboard/history", {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (statsResponse.ok && historyResponse.ok) {
+        const stats = await statsResponse.json();
+        const history = await historyResponse.json();
+        
+        setDashboardData({
+          stats,
+          history
+        });
+      } else {
+        console.error("Failed to fetch dashboard data");
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setDashboardLoading(false);
     }
   };
 
@@ -337,14 +376,135 @@ export default function App() {
   };
 
   const renderDashboardView = () => {
+    if (dashboardLoading) {
+      return (
+        <div className="content">
+          <h2>Dashboard</h2>
+          <p>Loading your interview data...</p>
+        </div>
+      );
+    }
+
+    if (!dashboardData) {
+      return (
+        <div className="content">
+          <h2>Dashboard</h2>
+          <p>Your interview progress and statistics</p>
+          <button onClick={fetchDashboardData} className="load-dashboard-btn">
+            Load Dashboard Data
+          </button>
+        </div>
+      );
+    }
+
+    const { stats, history } = dashboardData;
+
     return (
       <div className="content">
         <h2>Dashboard</h2>
-        <p>Your interview progress and statistics will appear here.</p>
-        <div className="dashboard-placeholder">
-          <p>Dashboard features coming soon!</p>
-          <p>This will show your interview history, scores, and progress over time.</p>
+        <p>Your interview progress and statistics</p>
+        
+        {/* Statistics Cards */}
+        <div className="stats-grid">
+          <div className="stat-card">
+            <h3>Total Interviews</h3>
+            <div className="stat-number">{stats.total_interviews || 0}</div>
+          </div>
+          <div className="stat-card">
+            <h3>Average Score</h3>
+            <div className="stat-number">{stats.average_score || 0}%</div>
+          </div>
+          <div className="stat-card">
+            <h3>Technical Avg</h3>
+            <div className="stat-number">{stats.technical_average || 0}%</div>
+          </div>
+          <div className="stat-card">
+            <h3>Behavioral Avg</h3>
+            <div className="stat-number">{stats.behavioral_average || 0}%</div>
+          </div>
         </div>
+
+        {/* Strengths and Weaknesses */}
+        <div className="strengths-weaknesses">
+          <div className="strengths">
+            <h3>Strengths</h3>
+            <ul>
+              {stats.strengths && stats.strengths.length > 0 ? (
+                stats.strengths.map((strength, index) => (
+                  <li key={index}>{strength}</li>
+                ))
+              ) : (
+                <li>Complete more interviews to see your strengths</li>
+              )}
+            </ul>
+          </div>
+          <div className="weaknesses">
+            <h3>Areas for Improvement</h3>
+            <ul>
+              {stats.weaknesses && stats.weaknesses.length > 0 ? (
+                stats.weaknesses.map((weakness, index) => (
+                  <li key={index}>{weakness}</li>
+                ))
+              ) : (
+                <li>Complete more interviews to see areas for improvement</li>
+              )}
+            </ul>
+          </div>
+        </div>
+
+        {/* Recent Interview History */}
+        <div className="history-section">
+          <h3>Recent Interview History</h3>
+          {history && history.length > 0 ? (
+            <div className="history-table-container">
+              <table className="history-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Question</th>
+                    <th>Your Answer</th>
+                    <th>Score</th>
+                    <th>Feedback</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((session) => (
+                    <tr key={session.id}>
+                      <td>{new Date(session.created_at).toLocaleDateString()}</td>
+                      <td className="type-cell">{session.type}</td>
+                      <td className="question-cell">{session.question}</td>
+                      <td className="answer-cell">{session.user_answer || "No answer provided"}</td>
+                      <td className={`score-cell ${session.score >= 70 ? 'good' : session.score >= 50 ? 'medium' : 'poor'}`}>
+                        {session.score}%
+                      </td>
+                      <td className="feedback-cell">
+                        {session.feedback ? (
+                          <div className="feedback-preview">
+                            {session.feedback.length > 100 
+                              ? `${session.feedback.substring(0, 100)}...` 
+                              : session.feedback
+                            }
+                          </div>
+                        ) : (
+                          <span className="no-feedback">No feedback</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="no-history">
+              <p>No interview history yet. Start practicing to see your progress!</p>
+            </div>
+          )}
+        </div>
+
+        <button onClick={fetchDashboardData} className="refresh-btn">
+          Refresh Dashboard
+        </button>
       </div>
     );
   };
