@@ -165,15 +165,25 @@ export default function App() {
                   headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                   body: `username=${username}&password=${password}`
                 })
-                .then(res => res.json())
+                .then(res => {
+                  if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                  }
+                  return res.json();
+                })
                 .then(data => {
                   if (data.access_token) {
                     localStorage.setItem('token', data.access_token);
                     localStorage.setItem('user', JSON.stringify(data.user));
                     handleLogin(data.user);
+                  } else {
+                    alert('Login failed: Invalid response from server');
                   }
                 })
-                .catch(err => console.error('Login failed:', err));
+                .catch(err => {
+                  console.error('Login failed:', err);
+                  alert('Login failed: ' + err.message);
+                });
               }}>
                 <input name="username" placeholder="Username" required />
                 <input name="password" type="password" placeholder="Password" required />
@@ -199,14 +209,24 @@ export default function App() {
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(userData)
                 })
-                .then(res => res.json())
+                .then(res => {
+                  if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                  }
+                  return res.json();
+                })
                 .then(data => {
                   if (data.id) {
                     alert('Registration successful! Please login.');
                     setAuthView("login");
+                  } else {
+                    alert('Registration failed: Invalid response from server');
                   }
                 })
-                .catch(err => console.error('Registration failed:', err));
+                .catch(err => {
+                  console.error('Registration failed:', err);
+                  alert('Registration failed: ' + err.message);
+                });
               }}>
                 <input name="full_name" placeholder="Full Name" required />
                 <input name="username" placeholder="Username" required />
