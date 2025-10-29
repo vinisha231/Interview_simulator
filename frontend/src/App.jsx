@@ -4,6 +4,13 @@ import "./App.css";
 export default function App() {
   const [user, setUser] = useState(null);
   const [authView, setAuthView] = useState("login");
+  const [currentView, setCurrentView] = useState("interview");
+  const [interviewType, setInterviewType] = useState(null);
+  const [currentQuestion, setCurrentQuestion] = useState("");
+  const [userAnswer, setUserAnswer] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [score, setScore] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -21,6 +28,120 @@ export default function App() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setUser(null);
+    setCurrentView("interview");
+    setInterviewType(null);
+    setCurrentQuestion("");
+    setUserAnswer("");
+    setFeedback("");
+    setScore(null);
+  };
+
+  const startInterview = async (type) => {
+    setIsLoading(true);
+    setInterviewType(type);
+    
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`/api/interview/generate-question?interview_type=${type}&difficulty=medium`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentQuestion(data.question);
+      } else {
+        alert("Failed to generate question. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error generating question:", error);
+      alert("Error generating question. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const submitAnswer = async () => {
+    if (!userAnswer.trim()) {
+      alert("Please provide an answer before submitting.");
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("/api/interview/evaluate", {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          question: currentQuestion,
+          user_answer: userAnswer,
+          interview_type: interviewType
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setFeedback(data.feedback);
+        setScore(data.score);
+        
+        // Save session to backend
+        await fetch("/api/sessions/", {
+          method: "POST",
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            interview_type: interviewType,
+            question: currentQuestion,
+            user_answer: userAnswer,
+            feedback: data.feedback,
+            score: data.score
+          })
+        });
+      } else {
+        alert("Failed to evaluate answer. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error evaluating answer:", error);
+      alert("Error evaluating answer. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const nextQuestion = async () => {
+    setIsLoading(true);
+    setUserAnswer("");
+    setFeedback("");
+    setScore(null);
+    
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`/api/interview/generate-question?interview_type=${interviewType}&difficulty=medium`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentQuestion(data.question);
+      } else {
+        alert("Failed to generate next question. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error generating next question:", error);
+      alert("Error generating next question. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!user) {
@@ -101,6 +222,113 @@ export default function App() {
     );
   }
 
+  const renderInterviewView = () => {
+    if (!interviewType) {
+      return (
+        <div className="content">
+          <h2>Interview Practice</h2>
+          <p>Choose your interview type and start practicing!</p>
+          
+          <div className="interview-types">
+            <button 
+              className="interview-btn" 
+              onClick={() => startInterview("technical")}
+              disabled={isLoading}
+            >
+              {isLoading ? "Loading..." : "Technical Interview"}
+            </button>
+            <button 
+              className="interview-btn" 
+              onClick={() => startInterview("behavioral")}
+              disabled={isLoading}
+            >
+              {isLoading ? "Loading..." : "Behavioral Interview"}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (!currentQuestion) {
+      return (
+        <div className="content">
+          <h2>Loading Question...</h2>
+          <p>Please wait while we generate your {interviewType} interview question.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="content">
+        <h2>{interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} Interview</h2>
+        
+        <div className="question-section">
+          <h3>Question:</h3>
+          <div className="question-box">
+            <p>{currentQuestion}</p>
+          </div>
+        </div>
+
+        {!feedback ? (
+          <div className="answer-section">
+            <h3>Your Answer:</h3>
+            <textarea
+              value={userAnswer}
+              onChange={(e) => setUserAnswer(e.target.value)}
+              placeholder="Type your answer here..."
+              rows={6}
+              disabled={isLoading}
+            />
+            <button 
+              onClick={submitAnswer}
+              disabled={isLoading || !userAnswer.trim()}
+              className="submit-btn"
+            >
+              {isLoading ? "Evaluating..." : "Submit Answer"}
+            </button>
+          </div>
+        ) : (
+          <div className="feedback-section">
+            <h3>Feedback & Score:</h3>
+            <div className="score-display">
+              <span className="score">Score: {score}%</span>
+            </div>
+            <div className="feedback-box">
+              <p>{feedback}</p>
+            </div>
+            <div className="feedback-actions">
+              <button onClick={nextQuestion} disabled={isLoading} className="next-btn">
+                {isLoading ? "Loading..." : "Next Question"}
+              </button>
+              <button onClick={() => {
+                setInterviewType(null);
+                setCurrentQuestion("");
+                setUserAnswer("");
+                setFeedback("");
+                setScore(null);
+              }} className="back-btn">
+                Back to Interview Types
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderDashboardView = () => {
+    return (
+      <div className="content">
+        <h2>Dashboard</h2>
+        <p>Your interview progress and statistics will appear here.</p>
+        <div className="dashboard-placeholder">
+          <p>Dashboard features coming soon!</p>
+          <p>This will show your interview history, scores, and progress over time.</p>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="app">
       <div className="card">
@@ -108,20 +336,22 @@ export default function App() {
         <p>LLM Interview Simulator</p>
         
         <div className="nav">
-          <button onClick={() => setView("interview")}>Interview</button>
-          <button onClick={() => setView("dashboard")}>Dashboard</button>
+          <button 
+            onClick={() => setCurrentView("interview")}
+            className={currentView === "interview" ? "active" : ""}
+          >
+            Interview
+          </button>
+          <button 
+            onClick={() => setCurrentView("dashboard")}
+            className={currentView === "dashboard" ? "active" : ""}
+          >
+            Dashboard
+          </button>
           <button onClick={handleLogout}>Logout</button>
         </div>
         
-        <div className="content">
-          <h2>Interview Practice</h2>
-          <p>Choose your interview type and start practicing!</p>
-          
-          <div className="interview-types">
-            <button className="interview-btn">Technical Interview</button>
-            <button className="interview-btn">Behavioral Interview</button>
-          </div>
-        </div>
+        {currentView === "interview" ? renderInterviewView() : renderDashboardView()}
       </div>
     </div>
   );
