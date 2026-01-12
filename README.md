@@ -1,6 +1,6 @@
 # LLM Interview Simulator
 
-An interview simulation platform that uses Large Language Models (LLMs) to conduct realistic technical interviews and provide detailed feedback.
+An interview simulation platform that uses Large Language Models (LLMs) to conduct realistic technical and behavioural interviews and provide detailed feedback.
 
 ## Project Structure
 
