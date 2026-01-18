@@ -11,8 +11,6 @@ What this file does:
 2. Imports our FastAPI application
 3. Creates an 'application' variable that Azure can use
 4. Provides a fallback for running locally
-
-Author: LLM Interview Simulator Team
 """
 
 # Import necessary modules

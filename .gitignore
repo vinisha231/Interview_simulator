@@ -78,3 +78,19 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
+
+# Node
+node_modules/ 
+frontend/package-lock.json
+
+#ML / AI artifacts
+validate_answers/bert_results/
+validate_answers/data/
+validate_answers/plots/
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+#OS
+.DS_Store
