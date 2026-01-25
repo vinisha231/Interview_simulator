@@ -5,7 +5,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #000;
+  color: #fff;
   min-height: 100vh;
 }
 
@@ -18,28 +19,18 @@ body {
 }
 
 .card {
-  background: white;
-  border-radius: 12px;
-  padding: 40px;
+  background: #fff;    /* white box */
+  color: #000;         /* black text inside */
+  border-radius: 16px;
+  padding: 60px;       /* keeps our comfy size */
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  max-width: 500px;
+  max-width: 700px;
   width: 100%;
   text-align: center;
 }
 
-h1 {
-  color: #333;
-  margin-bottom: 10px;
-}
-
-h2 {
-  color: #555;
-  margin-bottom: 20px;
-}
-
-p {
-  color: #666;
-  margin-bottom: 30px;
+.card h1, .card h2, .card p {
+  color: #000;   /* black text inside card */
 }
 
 form {
@@ -59,6 +50,11 @@ input {
 input:focus {
   outline: none;
   border-color: #667eea;
+}
+
+input, textarea {
+  color: #000;       /* black text inside inputs */
+  background: #fff;  /* white background inside inputs */
 }
 
 button {
@@ -128,6 +124,10 @@ button:hover {
   line-height: 1.6;
 }
 
+p {
+  line-height: 1.7;
+}
+
 textarea {
   width: 100%;
   padding: 12px;
@@ -193,7 +193,9 @@ textarea:disabled {
   font-size: 24px;
   font-weight: bold;
   color: #28a745;
-  background: #f8f9fa;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: #fff;
   padding: 10px 20px;
   border-radius: 8px;
   display: inline-block;
@@ -205,8 +207,9 @@ textarea:disabled {
 }
 
 .dashboard-placeholder {
-  background: #f8f9fa;
-  border: 2px dashed #dee2e6;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: #fff;
   border-radius: 8px;
   padding: 40px;
   text-align: center;
@@ -236,8 +239,9 @@ textarea:disabled {
 }
 
 .stat-card {
-  background: #f8f9fa;
-  border: 2px solid #e9ecef;
+ background: #1a1a1a;
+  border: 1px solid #333;
+  color: #fff;
   border-radius: 12px;
   padding: 20px;
   text-align: center;
@@ -272,7 +276,9 @@ textarea:disabled {
 }
 
 .strengths, .weaknesses {
-  background: #f8f9fa;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: #fff;
   border-radius: 12px;
   padding: 20px;
 }
@@ -335,7 +341,7 @@ textarea:disabled {
 }
 
 .history-table tr:hover {
-  background: #f8f9fa;
+  background: #1a1a1a; 
 }
 
 .type-cell {
@@ -386,7 +392,7 @@ textarea:disabled {
   text-align: center;
   padding: 40px;
   color: #6c757d;
-  background: #f8f9fa;
+  background: #1a1a1a;
   border-radius: 12px;
   border: 2px dashed #dee2e6;
 }

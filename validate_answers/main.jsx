@@ -1,6 +1,66 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Code, Users, Play, RotateCcw, Clock, TrendingUp, CheckCircle, Volume2, StopCircle, Terminal } from 'lucide-react';
 
+function InterviewForm() {
+  const [role, setRole] = useState("");
+  const [level, setLevel] = useState("Junior");
+  const [company, setCompany] = useState("");
+  const [questions, setQuestions] = useState("");
+
+  const handleSubmit = async () => {
+    if (!role) {
+      alert("Please select a role!");
+      return;
+    }
+
+    const res = await fetch("http://localhost:8000/generate_questions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role, level, company }),
+    });
+
+    const data = await res.json();
+    setQuestions(data.questions);
+  };
+
+  return (
+    <div style={{ padding: "20px" }}>
+      <h2>Interview Simulator</h2>
+      
+      <label>Role: </label>
+      <select value={role} onChange={e => setRole(e.target.value)}>
+        <option value="">Select Role</option>
+        <option value="Software Engineer">Software Engineer</option>
+        <option value="CyberSec Engineer">CyberSec Engineer</option>
+      </select>
+
+      <label>Level: </label>
+      <select value={level} onChange={e => setLevel(e.target.value)}>
+        <option value="Junior">Junior</option>
+        <option value="Senior">Senior</option>
+      </select>
+
+      <label>Company (optional): </label>
+      <input
+        type="text"
+        value={company}
+        onChange={e => setCompany(e.target.value)}
+        placeholder="e.g., Amazon"
+      />
+
+      <button onClick={handleSubmit}>Generate Questions</button>
+
+      {questions && (
+        <div style={{ marginTop: "20px" }}>
+          <h3>Generated Questions:</h3>
+          <pre>{questions}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default InterviewForm;
 export default function InterviewSimulator() {
   const [mode, setMode] = useState(null);
   const [difficulty, setDifficulty] = useState('medium');
