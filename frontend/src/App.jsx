@@ -7,6 +7,8 @@ export default function App() {
   const [authView, setAuthView] = useState("login");
   const [currentView, setCurrentView] = useState("interview");
   const [interviewType, setInterviewType] = useState(null);
+  const [role, setRole] = useState("");
+  const [company, setCompany] = useState("");
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [userAnswer, setUserAnswer] = useState("");
   const [feedback, setFeedback] = useState("");
@@ -55,6 +57,8 @@ export default function App() {
     setUser(null);
     setCurrentView("interview");
     setInterviewType(null);
+    setRole("");
+    setCompany("");
     setCurrentQuestion("");
     setUserAnswer("");
     setFeedback("");
@@ -62,12 +66,24 @@ export default function App() {
   };
 
   const startInterview = async (type) => {
+    if (!role.trim()) {
+      alert("Please enter a role to practice for.");
+      return;
+    }
     setIsLoading(true);
     setInterviewType(type);
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`/api/interview/generate-question?interview_type=${type}&difficulty=medium`, {
+      const params = new URLSearchParams({
+        interview_type: type,
+        difficulty: "medium",
+        role: role.trim()
+      });
+      if (company.trim()) {
+        params.set("company", company.trim());
+      }
+      const response = await fetch(`/api/interview/generate-question?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -124,6 +140,8 @@ export default function App() {
           },
           body: JSON.stringify({
             interview_type: interviewType,
+            role: role.trim(),
+            company: company.trim() || null,
             question: currentQuestion,
             user_answer: userAnswer,
             feedback: data.feedback,
@@ -149,7 +167,15 @@ export default function App() {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`/api/interview/generate-question?interview_type=${interviewType}&difficulty=medium`, {
+      const params = new URLSearchParams({
+        interview_type: interviewType,
+        difficulty: "medium",
+        role: role.trim()
+      });
+      if (company.trim()) {
+        params.set("company", company.trim());
+      }
+      const response = await fetch(`/api/interview/generate-question?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -309,7 +335,23 @@ export default function App() {
       return (
         <div className="content">
           <h2>Interview Practice</h2>
-          <p>Choose your interview type and start practicing!</p>
+          <p>Enter your role and choose an interview type to start practicing.</p>
+          
+          <div className="role-inputs">
+            <input
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              placeholder="Role (e.g., Software Engineer)"
+              disabled={isLoading}
+              required
+            />
+            <input
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+              placeholder="Company (optional)"
+              disabled={isLoading}
+            />
+          </div>
           
           <div className="interview-types">
             <button 
@@ -351,50 +393,18 @@ export default function App() {
           </div>
         </div>
 
-        {!feedback ? ( 
+        {!feedback && ( 
           <TechnicalInterviewBox
             userAnswer={userAnswer}
             setUserAnswer={setUserAnswer}
-            feedback={feedback}
-            setFeedback={setFeedback}
             submitAnswer={submitAnswer}
             isListening={isListening}
             setIsListening={setIsListening}
             recognitionRef={recognitionRef}
+            isLoading={isLoading}
           />
-        ) : (
-          <div className="answer-section">
-            <h3>Your Answer:</h3>
-            <textarea
-              value={userAnswer}
-              onChange={(e) => setUserAnswer(e.target.value)}
-              placeholder="Type your answer here..."
-              rows={6}
-              disabled={isLoading}
-            />
-            <div style={{ margin: '10px 0' }}>
-              <button
-                onClick={() => {
-                  if (recognitionRef.current) {
-                    recognitionRef.current.start();
-                    setIsListening(true);
-                  }
-                }}
-                disabled={isListening}
-                className="submit-btn"
-              >
-                {isListening ? "Listening..." : "Start Speaking"}
-              </button>
-            </div>
-            <button 
-              onClick={submitAnswer}
-              disabled={isLoading || !userAnswer.trim()}
-              className="submit-btn"
-            >
-              {isLoading ? "Evaluating..." : "Submit Answer"}
-            </button>
-          </div>
-        ) : (
+        )}
+        {feedback && (
           <div className="feedback-section">
             <h3>Feedback & Score:</h3>
             <div className="score-display">
