@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./App.css";
+import TechnicalInterviewBox from './interviewBox';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -13,6 +14,8 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [dashboardData, setDashboardData] = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -21,6 +24,26 @@ export default function App() {
       setUser(JSON.parse(userData));
     }
   }, []);
+  
+  useEffect(() => {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SpeechRecognition) {
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = true;
+
+    recognition.onresult = (event) => {
+      const speechToText = Array.from(event.results)
+        .map(result => result[0].transcript)
+        .join('');
+      setUserAnswer(speechToText);
+    };
+
+    recognition.onend = () => setIsListening(false);
+
+    recognitionRef.current = recognition;
+  }
+}, []);
 
   const handleLogin = (userData) => {
     setUser(userData);
@@ -328,7 +351,18 @@ export default function App() {
           </div>
         </div>
 
-        {!feedback ? (
+        {!feedback ? ( 
+          <TechnicalInterviewBox
+            userAnswer={userAnswer}
+            setUserAnswer={setUserAnswer}
+            feedback={feedback}
+            setFeedback={setFeedback}
+            submitAnswer={submitAnswer}
+            isListening={isListening}
+            setIsListening={setIsListening}
+            recognitionRef={recognitionRef}
+          />
+        ) : (
           <div className="answer-section">
             <h3>Your Answer:</h3>
             <textarea
@@ -338,6 +372,20 @@ export default function App() {
               rows={6}
               disabled={isLoading}
             />
+            <div style={{ margin: '10px 0' }}>
+              <button
+                onClick={() => {
+                  if (recognitionRef.current) {
+                    recognitionRef.current.start();
+                    setIsListening(true);
+                  }
+                }}
+                disabled={isListening}
+                className="submit-btn"
+              >
+                {isListening ? "Listening..." : "Start Speaking"}
+              </button>
+            </div>
             <button 
               onClick={submitAnswer}
               disabled={isLoading || !userAnswer.trim()}
