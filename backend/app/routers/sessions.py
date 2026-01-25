@@ -4,6 +4,7 @@ from app.database import SessionLocal
 from app.models.session import InterviewSession
 from pydantic import BaseModel
 from typing import List, Optional
+from app.routers.auth import get_current_active_user
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
@@ -27,8 +28,13 @@ class SessionCreate(BaseModel):
 
 
 @router.post("/")
-def create_session(session_data: SessionCreate, db: Session = Depends(get_db)):
+def create_session(
+    session_data: SessionCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user)
+):
     new_session = InterviewSession(
+        user_id=current_user.id,
         role=session_data.role,
         company=session_data.company,
         interview_type=session_data.interview_type,

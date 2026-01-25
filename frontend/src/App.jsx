@@ -7,6 +7,7 @@ export default function App() {
   const [authView, setAuthView] = useState("login");
   const [currentView, setCurrentView] = useState("interview");
   const [interviewType, setInterviewType] = useState(null);
+  const [theme, setTheme] = useState("dark");
   const [role, setRole] = useState("");
   const [company, setCompany] = useState("");
   const [currentQuestion, setCurrentQuestion] = useState("");
@@ -46,6 +47,11 @@ export default function App() {
     recognitionRef.current = recognition;
   }
 }, []);
+
+  useEffect(() => {
+    document.body.classList.remove("theme-dark", "theme-light");
+    document.body.classList.add(`theme-${theme}`);
+  }, [theme]);
 
   const handleLogin = (userData) => {
     setUser(userData);
@@ -247,11 +253,15 @@ export default function App() {
                 const formData = new FormData(e.target);
                 const username = formData.get('username');
                 const password = formData.get('password');
+                const body = new URLSearchParams({
+                  username: String(username || "").trim(),
+                  password: String(password || "")
+                }).toString();
                 
                 fetch('/api/auth/login', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                  body: `username=${username}&password=${password}`
+                  body
                 })
                 .then(res => {
                   if (!res.ok) {
@@ -388,6 +398,11 @@ export default function App() {
         
         <div className="question-section">
           <h3>Question:</h3>
+          <div className="question-meta">
+            <span className="meta-pill">{role || "Role"}</span>
+            {company && <span className="meta-pill">{company}</span>}
+            <span className="meta-pill">{interviewType}</span>
+          </div>
           <div className="question-box">
             <p>{currentQuestion}</p>
           </div>
@@ -402,6 +417,7 @@ export default function App() {
             setIsListening={setIsListening}
             recognitionRef={recognitionRef}
             isLoading={isLoading}
+            isTechnical={interviewType === "technical"}
           />
         )}
         {feedback && (
@@ -469,16 +485,43 @@ export default function App() {
             <div className="stat-number">{stats.total_interviews || 0}</div>
           </div>
           <div className="stat-card">
+            <h3>Total Score</h3>
+            <div className="stat-number">{stats.total_score || 0}</div>
+          </div>
+          <div className="stat-card">
+            <h3>Behavioral Total</h3>
+            <div className="stat-number">{stats.total_behavioral_score || 0}</div>
+          </div>
+          <div className="stat-card">
+            <h3>Technical Total</h3>
+            <div className="stat-number">{stats.total_technical_score || 0}</div>
+          </div>
+          <div className="stat-card">
             <h3>Average Score</h3>
             <div className="stat-number">{stats.average_score || 0}%</div>
           </div>
           <div className="stat-card">
-            <h3>Technical Avg</h3>
-            <div className="stat-number">{stats.technical_average || 0}%</div>
+            <h3>Best Score</h3>
+            <div className="stat-number">{stats.best_score || 0}%</div>
           </div>
-          <div className="stat-card">
-            <h3>Behavioral Avg</h3>
-            <div className="stat-number">{stats.behavioral_average || 0}%</div>
+        </div>
+
+        <div className="dashboard-highlights">
+          <div className="highlight-card">
+            <h3>Latest Interview</h3>
+            <p>
+              {stats.last_interview_at
+                ? new Date(stats.last_interview_at).toLocaleString()
+                : "No interviews yet"}
+            </p>
+          </div>
+          <div className="highlight-card">
+            <h3>Latest Role</h3>
+            <p>{stats.last_role || "—"}</p>
+          </div>
+          <div className="highlight-card">
+            <h3>Latest Company</h3>
+            <p>{stats.last_company || "—"}</p>
           </div>
         </div>
 
@@ -520,6 +563,8 @@ export default function App() {
                   <tr>
                     <th>Date</th>
                     <th>Type</th>
+                    <th>Role</th>
+                    <th>Company</th>
                     <th>Question</th>
                     <th>Your Answer</th>
                     <th>Score</th>
@@ -531,6 +576,8 @@ export default function App() {
                     <tr key={session.id}>
                       <td>{new Date(session.created_at).toLocaleDateString()}</td>
                       <td className="type-cell">{session.type}</td>
+                      <td className="role-cell">{session.role || "—"}</td>
+                      <td className="company-cell">{session.company || "—"}</td>
                       <td className="question-cell">{session.question}</td>
                       <td className="answer-cell">{session.user_answer || "No answer provided"}</td>
                       <td className={`score-cell ${session.score >= 70 ? 'good' : session.score >= 50 ? 'medium' : 'poor'}`}>
@@ -569,6 +616,15 @@ export default function App() {
 
   return (
     <div className="app">
+      <div className="theme-toggle">
+        <button
+          type="button"
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="toggle-btn"
+        >
+          {theme === "dark" ? "Light Mode" : "Dark Mode"}
+        </button>
+      </div>
       <div className="card">
         <h1>Welcome, {user.full_name || user.username}!</h1>
         <p>LLM Interview Simulator</p>

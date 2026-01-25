@@ -21,6 +21,7 @@ Author: LLM Interview Simulator Team
 from fastapi import APIRouter, HTTPException  # FastAPI router and error handling
 from pydantic import BaseModel  # Data validation and serialization
 from typing import Optional, List  # Type hints for better code documentation
+import re
 import asyncio  # For asynchronous operations
 
 # Import Bedrock service
@@ -150,6 +151,30 @@ async def evaluate_answer(request: InterviewRequest):
     Raises:
         HTTPException: If there's an error during evaluation
     """
+    def is_low_quality_answer(answer: str) -> bool:
+        cleaned = answer.strip()
+        if len(cleaned) < 10:
+            return True
+        tokens = re.findall(r"[A-Za-z]+", cleaned)
+        if len(tokens) < 3:
+            return True
+        unique_ratio = len(set(t.lower() for t in tokens)) / max(len(tokens), 1)
+        alpha_ratio = sum(1 for c in cleaned if c.isalpha()) / max(len(cleaned), 1)
+        if unique_ratio < 0.3 or alpha_ratio < 0.6:
+            return True
+        return False
+
+    if is_low_quality_answer(request.user_answer):
+        return InterviewResponse(
+            feedback="Your answer is too short or unclear to evaluate. Please provide a complete, specific response.",
+            score=2,
+            suggestions=[
+                "Answer in full sentences with concrete details.",
+                "Explain your reasoning step-by-step.",
+                "Stay focused on the question asked."
+            ]
+        )
+
     try:
         # Get Bedrock service instance
         bedrock = get_bedrock_service()
