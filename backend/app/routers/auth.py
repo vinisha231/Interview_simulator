@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from sqlalchemy import or_, func
 from app.database import SessionLocal
 from app.models.user import User
 from pydantic import BaseModel, EmailStr
@@ -156,7 +157,13 @@ def login(
     Returns JWT access token.
     """
     # Authenticate user
-    user = db.query(User).filter(User.username == form_data.username).first()
+    identifier = (form_data.username or "").strip().lower()
+    user = db.query(User).filter(
+        or_(
+            func.lower(User.username) == identifier,
+            func.lower(User.email) == identifier
+        )
+    ).first()
     
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
