@@ -95,7 +95,14 @@ class BedrockService:
             print(f"Error invoking Bedrock: {str(e)}")
             raise
     
-    def generate_question(self, interview_type: str, difficulty: str = "medium", previous_questions: List[str] = None) -> str:
+    def generate_question(
+        self,
+        interview_type: str,
+        difficulty: str = "medium",
+        previous_questions: List[str] = None,
+        role: Optional[str] = None,
+        company: Optional[str] = None
+    ) -> str:
         """
         Generate an interview question using Bedrock.
         
@@ -107,14 +114,20 @@ class BedrockService:
         Returns:
             A generated interview question
         """
-        system_prompt = f"""You are an expert {interview_type} interviewer. Generate relevant, 
-        challenging interview questions that assess both technical knowledge and communication skills."""
+        role_context = role.strip() if role else "the role"
+        company_context = f" at {company.strip()}" if company and company.strip() else ""
+        system_prompt = (
+            f"You are an expert {interview_type} interviewer. Generate relevant, challenging "
+            f"interview questions for {role_context}{company_context} that assess both technical "
+            "knowledge and communication skills."
+        )
         
         context = ""
         if previous_questions:
             context = f"\nYou've already asked: {', '.join(previous_questions[-3:])}\nAvoid repeating these."
         
         prompt = f"""Generate a {difficulty} difficulty {interview_type} interview question.
+        Role: {role_context}{company_context}
         {context}
         
         The question should be:

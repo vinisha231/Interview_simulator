@@ -6,6 +6,8 @@ class InterviewSession(Base):
     __tablename__ = "interview_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
+    role = Column(String(120), nullable=True)
+    company = Column(String(120), nullable=True)
     interview_type = Column(String(50))
     question = Column(Text)
     user_answer = Column(Text)

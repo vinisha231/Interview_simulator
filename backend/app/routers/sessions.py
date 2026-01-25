@@ -18,6 +18,8 @@ def get_db():
 
 class SessionCreate(BaseModel):
     interview_type: str
+    role: Optional[str] = None
+    company: Optional[str] = None
     question: str
     user_answer: Optional[str] = None
     feedback: Optional[str] = None
@@ -27,6 +29,8 @@ class SessionCreate(BaseModel):
 @router.post("/")
 def create_session(session_data: SessionCreate, db: Session = Depends(get_db)):
     new_session = InterviewSession(
+        role=session_data.role,
+        company=session_data.company,
         interview_type=session_data.interview_type,
         question=session_data.question,
         user_answer=session_data.user_answer,

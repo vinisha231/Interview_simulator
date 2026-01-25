@@ -20,7 +20,17 @@ def get_dashboard_stats(db: Session = Depends(get_db)) -> Dict:
     sessions = db.query(InterviewSession).all()
 
     if not sessions:
-        return {"message": "No sessions found", "total_sessions": 0}
+        return {
+            "message": "No sessions found",
+            "total_sessions": 0,
+            "total_interviews": 0,
+            "average_score": 0,
+            "technical_average": 0,
+            "behavioral_average": 0,
+            "average_by_type": {},
+            "strengths": [],
+            "weaknesses": []
+        }
 
     total_sessions = len(sessions)
     avg_score = sum(s.score or 0 for s in sessions) / total_sessions
@@ -34,7 +44,10 @@ def get_dashboard_stats(db: Session = Depends(get_db)) -> Dict:
 
     return {
         "total_sessions": total_sessions,
+        "total_interviews": total_sessions,
         "average_score": round(avg_score, 2),
+        "technical_average": round(avg_by_type.get("technical", 0), 2),
+        "behavioral_average": round(avg_by_type.get("behavioral", 0), 2),
         "average_by_type": avg_by_type,
         "strengths": strengths,
         "weaknesses": weaknesses

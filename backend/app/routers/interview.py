@@ -93,7 +93,12 @@ async def get_interview_questions():
 
 # Define an endpoint to generate a new interview question using Bedrock
 @router.get("/generate-question")
-async def generate_question(interview_type: str = "technical", difficulty: str = "medium"):
+async def generate_question(
+    interview_type: str = "technical",
+    difficulty: str = "medium",
+    role: Optional[str] = None,
+    company: Optional[str] = None
+):
     """
     Generate a new interview question using AWS Bedrock.
     
@@ -108,12 +113,19 @@ async def generate_question(interview_type: str = "technical", difficulty: str =
     """
     try:
         bedrock = get_bedrock_service()
-        question = bedrock.generate_question(interview_type, difficulty)
+        question = bedrock.generate_question(
+            interview_type=interview_type,
+            difficulty=difficulty,
+            role=role,
+            company=company
+        )
         
         return {
             "question": question,
             "interview_type": interview_type,
-            "difficulty": difficulty
+            "difficulty": difficulty,
+            "role": role,
+            "company": company
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating question: {str(e)}")
