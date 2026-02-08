@@ -21,10 +21,12 @@ class SessionCreate(BaseModel):
     interview_type: str
     role: Optional[str] = None
     company: Optional[str] = None
+    difficulty: Optional[str] = None
     question: str
     user_answer: Optional[str] = None
     feedback: Optional[str] = None
     score: Optional[int] = None
+    notes: Optional[str] = None
 
 
 @router.post("/")
@@ -38,10 +40,12 @@ def create_session(
         role=session_data.role,
         company=session_data.company,
         interview_type=session_data.interview_type,
+        difficulty=session_data.difficulty,
         question=session_data.question,
         user_answer=session_data.user_answer,
         feedback=session_data.feedback,
-        score=session_data.score
+        score=session_data.score,
+        notes=session_data.notes
     )
     db.add(new_session)
     db.commit()

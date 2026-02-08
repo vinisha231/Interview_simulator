@@ -48,6 +48,17 @@ class InterviewRequest(BaseModel):
     question: str  # Required: the interview question
     user_answer: str  # Required: the user's answer
     interview_type: Optional[str] = "technical"  # Optional: defaults to "technical"
+    role: Optional[str] = None
+    company: Optional[str] = None
+
+# Follow-up request for conversational behavioral interviews
+class FollowupRequest(BaseModel):
+    question: str
+    user_answer: str
+    interview_type: Optional[str] = "behavioral"
+    role: Optional[str] = None
+    company: Optional[str] = None
+    history: Optional[List[dict]] = None
 
 # Define the structure of data we send back to the client
 class InterviewResponse(BaseModel):
@@ -175,6 +186,123 @@ async def evaluate_answer(request: InterviewRequest):
             ]
         )
 
+    def star_rubric_adjustment(answer: str) -> dict:
+        text = answer.strip()
+        lower = text.lower()
+        penalties = 0
+        notes = []
+
+        # Detect STAR sections by common labels or keywords.
+        markers = {
+            "s": [r"\bsituation\b", r"\bs\:", r"\bsituation\:"],
+            "t": [r"\btask\b", r"\bt\:", r"\btask\:"],
+            "a": [r"\baction\b", r"\ba\:", r"\baction\:"],
+            "r": [r"\bresult\b", r"\br\:", r"\bresult\:"]
+        }
+
+        positions = {}
+        for key, patterns in markers.items():
+            pos = None
+            for pat in patterns:
+                m = re.search(pat, lower)
+                if m:
+                    pos = m.start()
+                    break
+            positions[key] = pos
+
+        missing = [k for k, v in positions.items() if v is None]
+        if missing:
+            penalties += 20 * len(missing)
+            notes.append(
+                "Missing STAR section(s): " +
+                ", ".join([k.upper() for k in missing]) + "."
+            )
+
+        order = [positions["s"], positions["t"], positions["a"], positions["r"]]
+        if all(p is not None for p in order):
+            if not (order[0] < order[1] < order[2] < order[3]):
+                penalties += 15
+                notes.append("STAR order is out of sequence (S, T, A, R).")
+
+        # Time-based penalty: assume ~150 words/minute.
+        word_count = len(re.findall(r"\b\w+\b", text))
+        if word_count > 300:
+            penalties += 10
+            notes.append("Answer is too long (over ~2 minutes).")
+        elif word_count > 225:
+            penalties += 5
+            notes.append("Answer is long (over ~1.5 minutes).")
+
+        return {"penalties": penalties, "notes": notes}
+
+    def software_engineer_technical_rubric(answer: str) -> dict:
+        text = answer.strip().lower()
+        penalties = 0
+        notes = []
+
+        checks = [
+            ("problem understanding", [r"\bunderstand\b", r"\bclarify\b", r"\bassumptions?\b"]),
+            ("approach", [r"\bapproach\b", r"\bplan\b", r"\bstrategy\b"]),
+            ("complexity", [r"\btime\b", r"\bspace\b", r"\bcomplexity\b", r"\bbig[- ]o\b"]),
+            ("edge cases", [r"\bedge\b", r"\bcorner\b", r"\bcase\b"]),
+            ("examples/tests", [r"\bexample\b", r"\btest\b", r"\binput\b", r"\boutput\b"])
+        ]
+
+        for label, patterns in checks:
+            if not any(re.search(p, text) for p in patterns):
+                penalties += 10
+                notes.append(f"Missing {label}.")
+
+        # Simple order check: understanding -> approach -> complexity -> edge cases
+        order_patterns = [r"\bunderstand\b|\bclarify\b|\bassumptions?\b",
+                          r"\bapproach\b|\bplan\b|\bstrategy\b",
+                          r"\btime\b|\bspace\b|\bcomplexity\b|\bbig[- ]o\b",
+                          r"\bedge\b|\bcorner\b|\bcase\b"]
+        positions = []
+        for pat in order_patterns:
+            m = re.search(pat, text)
+            positions.append(m.start() if m else None)
+        if all(p is not None for p in positions):
+            if not (positions[0] < positions[1] < positions[2] < positions[3]):
+                penalties += 10
+                notes.append("Technical response order is out of sequence.")
+
+        return {"penalties": penalties, "notes": notes}
+
+    def software_engineer_design_rubric(answer: str) -> dict:
+        text = answer.strip().lower()
+        penalties = 0
+        notes = []
+
+        checks = [
+            ("requirements", [r"\brequirements?\b", r"\bconstraints?\b", r"\bgoals?\b"]),
+            ("high-level design", [r"\bhigh[- ]level\b", r"\bcomponents?\b", r"\barchitecture\b"]),
+            ("data flow", [r"\bdata flow\b", r"\brequest\b", r"\bresponse\b", r"\bpipeline\b"]),
+            ("scalability", [r"\bscale\b", r"\bscalable\b", r"\bthroughput\b", r"\blatency\b"]),
+            ("trade-offs", [r"\btrade[- ]off\b", r"\bpros\b", r"\bcons\b", r"\bdecision\b"])
+        ]
+
+        for label, patterns in checks:
+            if not any(re.search(p, text) for p in patterns):
+                penalties += 10
+                notes.append(f"Missing {label}.")
+
+        order_patterns = [r"\brequirements?\b|\bconstraints?\b|\bgoals?\b",
+                          r"\bhigh[- ]level\b|\bcomponents?\b|\barchitecture\b",
+                          r"\bdata flow\b|\brequest\b|\bresponse\b|\bpipeline\b",
+                          r"\bscale\b|\bscalable\b|\bthroughput\b|\blatency\b",
+                          r"\btrade[- ]off\b|\bpros\b|\bcons\b|\bdecision\b"]
+        positions = []
+        for pat in order_patterns:
+            m = re.search(pat, text)
+            positions.append(m.start() if m else None)
+        if all(p is not None for p in positions):
+            if not (positions[0] < positions[1] < positions[2] < positions[3] < positions[4]):
+                penalties += 10
+                notes.append("Design response order is out of sequence.")
+
+        return {"penalties": penalties, "notes": notes}
+
     try:
         # Get Bedrock service instance
         bedrock = get_bedrock_service()
@@ -198,15 +326,60 @@ async def evaluate_answer(request: InterviewRequest):
         # Get suggestions
         suggestions = evaluation.get("suggestions", [])
         
+        feedback_text = evaluation.get("feedback", "No feedback provided.")
+        final_score = overall_score
+
+        if request.interview_type in ["behavioral", "design"]:
+            star = star_rubric_adjustment(request.user_answer)
+            if star["penalties"]:
+                final_score = max(0, overall_score - star["penalties"])
+                feedback_text += " STAR rubric notes: " + " ".join(star["notes"])
+
+        role_value = (request.role or "").lower()
+        if "software engineer" in role_value:
+            if request.interview_type == "technical":
+                tech = software_engineer_technical_rubric(request.user_answer)
+                if tech["penalties"]:
+                    final_score = max(0, final_score - tech["penalties"])
+                    feedback_text += " Technical rubric notes: " + " ".join(tech["notes"])
+            if request.interview_type == "design":
+                design = software_engineer_design_rubric(request.user_answer)
+                if design["penalties"]:
+                    final_score = max(0, final_score - design["penalties"])
+                    feedback_text += " Design rubric notes: " + " ".join(design["notes"])
+
         # Create and return the response
         return InterviewResponse(
-            feedback=evaluation.get("feedback", "No feedback provided."),
-            score=overall_score,
+            feedback=feedback_text,
+            score=final_score,
             suggestions=suggestions
         )
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error evaluating answer: {str(e)}")
+
+
+@router.post("/followup")
+async def followup_question(request: FollowupRequest):
+    """
+    Generate a conversational follow-up question based on the user's answer.
+    """
+    try:
+        bedrock = get_bedrock_service()
+        question = bedrock.generate_followup_question(
+            question=request.question,
+            user_answer=request.user_answer,
+            interview_type=request.interview_type or "behavioral",
+            role=request.role,
+            company=request.company,
+            history=request.history
+        )
+        return {
+            "question": question,
+            "interview_type": request.interview_type or "behavioral"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating follow-up question: {str(e)}")
 
 # Define an endpoint to get available interview types
 @router.get("/types")
@@ -228,7 +401,7 @@ async def get_interview_types():
         "types": [
             {"id": "technical", "name": "Technical Interview"},
             {"id": "behavioral", "name": "Behavioral Interview"},
-            {"id": "system_design", "name": "System Design"},
+            {"id": "design", "name": "Design Interview"},
             {"id": "coding", "name": "Coding Challenge"}
         ]
     }

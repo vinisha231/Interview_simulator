@@ -10,13 +10,22 @@ export default function App() {
   const [theme, setTheme] = useState("dark");
   const [role, setRole] = useState("");
   const [company, setCompany] = useState("");
+  const [difficulty, setDifficulty] = useState("medium");
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [userAnswer, setUserAnswer] = useState("");
+  const [conversation, setConversation] = useState([]);
+  const [followupQuestion, setFollowupQuestion] = useState("");
+  const [followupAnswer, setFollowupAnswer] = useState("");
+  const [followupFeedback, setFollowupFeedback] = useState("");
+  const [followupScore, setFollowupScore] = useState(null);
+  const [sessionNotes, setSessionNotes] = useState("");
+  const [draft, setDraft] = useState(null);
   const [feedback, setFeedback] = useState("");
   const [score, setScore] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [dashboardData, setDashboardData] = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardError, setDashboardError] = useState("");
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef(null);
 
@@ -53,6 +62,64 @@ export default function App() {
     document.body.classList.add(`theme-${theme}`);
   }, [theme]);
 
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    const saved = localStorage.getItem("interviewDraft");
+    if (saved) {
+      try {
+        setDraft(JSON.parse(saved));
+      } catch {
+        setDraft(null);
+      }
+    } else {
+      setDraft(null);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    if (!interviewType && !currentQuestion) {
+      return;
+    }
+    const payload = {
+      interviewType,
+      role,
+      company,
+      difficulty,
+      currentQuestion,
+      userAnswer,
+      conversation,
+      followupQuestion,
+      followupAnswer,
+      followupFeedback,
+      followupScore,
+      sessionNotes,
+      feedback,
+      score
+    };
+    localStorage.setItem("interviewDraft", JSON.stringify(payload));
+  }, [
+    user,
+    interviewType,
+    role,
+    company,
+    difficulty,
+    currentQuestion,
+    userAnswer,
+    conversation,
+    followupQuestion,
+    followupAnswer,
+    followupFeedback,
+    followupScore,
+    sessionNotes,
+    feedback,
+    score
+  ]);
+
   const handleLogin = (userData) => {
     setUser(userData);
   };
@@ -65,10 +132,62 @@ export default function App() {
     setInterviewType(null);
     setRole("");
     setCompany("");
+    setDifficulty("medium");
     setCurrentQuestion("");
     setUserAnswer("");
+    setConversation([]);
+    setFollowupQuestion("");
+    setFollowupAnswer("");
+    setFollowupFeedback("");
+    setFollowupScore(null);
+    setSessionNotes("");
     setFeedback("");
     setScore(null);
+    setDashboardData(null);
+    setDashboardError("");
+    localStorage.removeItem("interviewDraft");
+  };
+
+  const resetInterview = () => {
+    setInterviewType(null);
+    setCurrentQuestion("");
+    setUserAnswer("");
+    setConversation([]);
+    setFollowupQuestion("");
+    setFollowupAnswer("");
+    setFollowupFeedback("");
+    setFollowupScore(null);
+    setSessionNotes("");
+    setFeedback("");
+    setScore(null);
+    localStorage.removeItem("interviewDraft");
+  };
+
+  const resumeDraft = () => {
+    if (!draft) {
+      return;
+    }
+    setInterviewType(draft.interviewType || null);
+    setRole(draft.role || "");
+    setCompany(draft.company || "");
+    setDifficulty(draft.difficulty || "medium");
+    setCurrentQuestion(draft.currentQuestion || "");
+    setUserAnswer(draft.userAnswer || "");
+    setConversation(draft.conversation || []);
+    setFollowupQuestion(draft.followupQuestion || "");
+    setFollowupAnswer(draft.followupAnswer || "");
+    setFollowupFeedback(draft.followupFeedback || "");
+    setFollowupScore(draft.followupScore ?? null);
+    setSessionNotes(draft.sessionNotes || "");
+    setFeedback(draft.feedback || "");
+    setScore(draft.score ?? null);
+    setDraft(null);
+    setCurrentView("interview");
+  };
+
+  const discardDraft = () => {
+    localStorage.removeItem("interviewDraft");
+    setDraft(null);
   };
 
   const startInterview = async (type) => {
@@ -78,12 +197,18 @@ export default function App() {
     }
     setIsLoading(true);
     setInterviewType(type);
+    setConversation([]);
+    setFollowupQuestion("");
+    setFollowupAnswer("");
+    setFollowupFeedback("");
+    setFollowupScore(null);
+    setSessionNotes("");
     
     try {
       const token = localStorage.getItem("token");
       const params = new URLSearchParams({
         interview_type: type,
-        difficulty: "medium",
+        difficulty,
         role: role.trim()
       });
       if (company.trim()) {
@@ -128,7 +253,9 @@ export default function App() {
         body: JSON.stringify({
           question: currentQuestion,
           user_answer: userAnswer,
-          interview_type: interviewType
+          interview_type: interviewType,
+          role: role.trim(),
+          company: company.trim() || null
         })
       });
       
@@ -136,6 +263,40 @@ export default function App() {
         const data = await response.json();
         setFeedback(data.feedback);
         setScore(data.score);
+        setConversation((prev) => [
+          ...prev,
+          { question: currentQuestion, answer: userAnswer }
+        ]);
+        setFollowupQuestion("");
+        setFollowupAnswer("");
+        setFollowupFeedback("");
+        setFollowupScore(null);
+
+        if (interviewType === "behavioral" || interviewType === "design") {
+          try {
+            const followupResponse = await fetch("/api/interview/followup", {
+              method: "POST",
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                question: currentQuestion,
+                user_answer: userAnswer,
+                interview_type: interviewType,
+                role: role.trim(),
+                company: company.trim() || null,
+                history: [...conversation, { question: currentQuestion, answer: userAnswer }]
+              })
+            });
+            if (followupResponse.ok) {
+              const followupData = await followupResponse.json();
+              setFollowupQuestion(followupData.question || "");
+            }
+          } catch (followupError) {
+            console.error("Error generating follow-up question:", followupError);
+          }
+        }
         
         // Save session to backend
         await fetch("/api/sessions/", {
@@ -148,10 +309,12 @@ export default function App() {
             interview_type: interviewType,
             role: role.trim(),
             company: company.trim() || null,
+            difficulty,
             question: currentQuestion,
             user_answer: userAnswer,
             feedback: data.feedback,
-            score: data.score
+            score: data.score,
+            notes: sessionNotes.trim() || null
           })
         });
       } else {
@@ -166,30 +329,56 @@ export default function App() {
   };
 
   const nextQuestion = async () => {
+    const lastEntry = conversation[conversation.length - 1];
+    const lastQuestion = lastEntry?.question || currentQuestion;
+    const lastAnswer = lastEntry?.answer || userAnswer;
     setIsLoading(true);
-    setUserAnswer("");
     setFeedback("");
     setScore(null);
+    setFollowupQuestion("");
+    setFollowupAnswer("");
+    setFollowupFeedback("");
+    setFollowupScore(null);
     
     try {
       const token = localStorage.getItem("token");
-      const params = new URLSearchParams({
-        interview_type: interviewType,
-        difficulty: "medium",
-        role: role.trim()
-      });
-      if (company.trim()) {
-        params.set("company", company.trim());
-      }
-      const response = await fetch(`/api/interview/generate-question?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      let response;
+      if (interviewType === "behavioral") {
+        response = await fetch("/api/interview/followup", {
+          method: "POST",
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            question: lastQuestion,
+            user_answer: lastAnswer,
+            interview_type: interviewType,
+            role: role.trim(),
+            company: company.trim() || null,
+            history: conversation
+          })
+        });
+      } else {
+        const params = new URLSearchParams({
+          interview_type: interviewType,
+          difficulty,
+          role: role.trim()
+        });
+        if (company.trim()) {
+          params.set("company", company.trim());
         }
-      });
+        response = await fetch(`/api/interview/generate-question?${params.toString()}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      }
       
       if (response.ok) {
         const data = await response.json();
         setCurrentQuestion(data.question);
+        setUserAnswer("");
       } else {
         alert("Failed to generate next question. Please try again.");
       }
@@ -201,10 +390,78 @@ export default function App() {
     }
   };
 
-  const fetchDashboardData = async () => {
-    setDashboardLoading(true);
+  const submitFollowupAnswer = async () => {
+    if (!followupAnswer.trim()) {
+      alert("Please provide an answer to the follow-up question.");
+      return;
+    }
+
+    setIsLoading(true);
     try {
       const token = localStorage.getItem("token");
+      const response = await fetch("/api/interview/evaluate", {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          question: followupQuestion,
+          user_answer: followupAnswer,
+          interview_type: interviewType,
+          role: role.trim(),
+          company: company.trim() || null
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFollowupFeedback(data.feedback);
+        setFollowupScore(data.score);
+        setConversation((prev) => [
+          ...prev,
+          { question: followupQuestion, answer: followupAnswer }
+        ]);
+
+        await fetch("/api/sessions/", {
+          method: "POST",
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            interview_type: interviewType,
+            role: role.trim(),
+            company: company.trim() || null,
+            difficulty,
+            question: followupQuestion,
+            user_answer: followupAnswer,
+            feedback: data.feedback,
+            score: data.score,
+            notes: sessionNotes.trim() || null
+          })
+        });
+      } else {
+        alert("Failed to evaluate follow-up answer. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error evaluating follow-up answer:", error);
+      alert("Error evaluating follow-up answer. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchDashboardData = async () => {
+    setDashboardLoading(true);
+    setDashboardError("");
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setDashboardError("Please log in to load dashboard data.");
+        setDashboardLoading(false);
+        return;
+      }
       
       // Fetch statistics
       const statsResponse = await fetch("/api/dashboard/stats", {
@@ -220,6 +477,12 @@ export default function App() {
         }
       });
       
+      if (statsResponse.status === 401 || historyResponse.status === 401) {
+        setDashboardError("Session expired. Please log in again.");
+        handleLogout();
+        return;
+      }
+
       if (statsResponse.ok && historyResponse.ok) {
         const stats = await statsResponse.json();
         const history = await historyResponse.json();
@@ -229,14 +492,22 @@ export default function App() {
           history
         });
       } else {
+        setDashboardError("Failed to fetch dashboard data.");
         console.error("Failed to fetch dashboard data");
       }
     } catch (error) {
+      setDashboardError("Error fetching dashboard data.");
       console.error("Error fetching dashboard data:", error);
     } finally {
       setDashboardLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (currentView === "dashboard" && user) {
+      fetchDashboardData();
+    }
+  }, [currentView, user]);
 
   if (!user) {
     return (
@@ -264,10 +535,12 @@ export default function App() {
                   body
                 })
                 .then(res => {
-                  if (!res.ok) {
-                    throw new Error(`HTTP error! status: ${res.status}`);
-                  }
-                  return res.json();
+                  return res.json().then((json) => {
+                    if (!res.ok) {
+                      throw new Error(json?.detail || "Invalid username or password.");
+                    }
+                    return json;
+                  });
                 })
                 .then(data => {
                   if (data.access_token) {
@@ -308,10 +581,12 @@ export default function App() {
                   body: JSON.stringify(userData)
                 })
                 .then(res => {
-                  if (!res.ok) {
-                    throw new Error(`HTTP error! status: ${res.status}`);
-                  }
-                  return res.json();
+                  return res.json().then((json) => {
+                    if (!res.ok) {
+                      throw new Error(json?.detail || "Registration failed.");
+                    }
+                    return json;
+                  });
                 })
                 .then(data => {
                   if (data.id) {
@@ -346,6 +621,16 @@ export default function App() {
         <div className="content">
           <h2>Interview Practice</h2>
           <p>Enter your role and choose an interview type to start practicing.</p>
+
+          {draft && (
+            <div className="resume-banner">
+              <p>You have a saved interview in progress.</p>
+              <div className="resume-actions">
+                <button onClick={resumeDraft} className="next-btn">Resume</button>
+                <button onClick={discardDraft} className="back-btn">Discard</button>
+              </div>
+            </div>
+          )}
           
           <div className="role-inputs">
             <input
@@ -361,6 +646,17 @@ export default function App() {
               placeholder="Company (optional)"
               disabled={isLoading}
             />
+          </div>
+
+          <div className="difficulty-select">
+            <label>
+              Difficulty:
+              <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} disabled={isLoading}>
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </label>
           </div>
           
           <div className="interview-types">
@@ -378,6 +674,13 @@ export default function App() {
             >
               {isLoading ? "Loading..." : "Behavioral Interview"}
             </button>
+            <button 
+              className="interview-btn" 
+              onClick={() => startInterview("design")}
+              disabled={isLoading}
+            >
+              {isLoading ? "Loading..." : "Design Interview"}
+            </button>
           </div>
         </div>
       );
@@ -388,13 +691,17 @@ export default function App() {
         <div className="content">
           <h2>Loading Question...</h2>
           <p>Please wait while we generate your {interviewType} interview question.</p>
+          <button onClick={resetInterview} className="back-btn">Stop Interview</button>
         </div>
       );
     }
 
     return (
       <div className="content">
-        <h2>{interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} Interview</h2>
+        <div className="interview-header">
+          <h2>{interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} Interview</h2>
+          <button onClick={resetInterview} className="back-btn">Stop Interview</button>
+        </div>
         
         <div className="question-section">
           <h3>Question:</h3>
@@ -402,10 +709,22 @@ export default function App() {
             <span className="meta-pill">{role || "Role"}</span>
             {company && <span className="meta-pill">{company}</span>}
             <span className="meta-pill">{interviewType}</span>
+            <span className="meta-pill">{difficulty}</span>
           </div>
           <div className="question-box">
             <p>{currentQuestion}</p>
           </div>
+        </div>
+
+        <div className="answer-section">
+          <h3>Session Notes</h3>
+          <textarea
+            value={sessionNotes}
+            onChange={(e) => setSessionNotes(e.target.value)}
+            placeholder="Add notes about this interview..."
+            rows={4}
+            disabled={isLoading}
+          />
         </div>
 
         {!feedback && ( 
@@ -429,19 +748,46 @@ export default function App() {
             <div className="feedback-box">
               <p>{feedback}</p>
             </div>
+            {followupQuestion && (interviewType === "behavioral" || interviewType === "design") && (
+              <div className="question-box">
+                <h4>Follow-up Question:</h4>
+                <p>{followupQuestion}</p>
+              </div>
+            )}
+            {followupQuestion && (interviewType === "behavioral" || interviewType === "design") && (
+              <div className="answer-section">
+                <h4>Your Follow-up Answer:</h4>
+                <textarea
+                  value={followupAnswer}
+                  onChange={(e) => setFollowupAnswer(e.target.value)}
+                  placeholder="Answer the follow-up question..."
+                  rows={6}
+                  disabled={isLoading}
+                />
+                <button
+                  onClick={submitFollowupAnswer}
+                  disabled={isLoading || !followupAnswer.trim()}
+                  className="submit-btn"
+                >
+                  {isLoading ? "Evaluating..." : "Submit Follow-up"}
+                </button>
+                {followupFeedback && (
+                  <div className="feedback-box">
+                    <p>{followupFeedback}</p>
+                    {followupScore !== null && (
+                      <div className="score-display">
+                        <span className="score">Score: {followupScore}%</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="feedback-actions">
               <button onClick={nextQuestion} disabled={isLoading} className="next-btn">
                 {isLoading ? "Loading..." : "Next Question"}
               </button>
-              <button onClick={() => {
-                setInterviewType(null);
-                setCurrentQuestion("");
-                setUserAnswer("");
-                setFeedback("");
-                setScore(null);
-              }} className="back-btn">
-                Back to Interview Types
-              </button>
+              <button onClick={resetInterview} className="back-btn">Stop Interview</button>
             </div>
           </div>
         )}
@@ -459,6 +805,18 @@ export default function App() {
       );
     }
 
+    if (dashboardError) {
+      return (
+        <div className="content">
+          <h2>Dashboard</h2>
+          <p>{dashboardError}</p>
+          <button onClick={fetchDashboardData} className="load-dashboard-btn">
+            Retry
+          </button>
+        </div>
+      );
+    }
+
     if (!dashboardData) {
       return (
         <div className="content">
@@ -472,140 +830,171 @@ export default function App() {
     }
 
     const { stats, history } = dashboardData;
+    const hasEnoughInterviews = (stats.total_interviews || 0) >= 5;
 
     return (
       <div className="content">
         <h2>Dashboard</h2>
         <p>Your interview progress and statistics</p>
         
-        {/* Statistics Cards */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <h3>Total Interviews</h3>
-            <div className="stat-number">{stats.total_interviews || 0}</div>
-          </div>
-          <div className="stat-card">
-            <h3>Total Score</h3>
-            <div className="stat-number">{stats.total_score || 0}</div>
-          </div>
-          <div className="stat-card">
-            <h3>Behavioral Total</h3>
-            <div className="stat-number">{stats.total_behavioral_score || 0}</div>
-          </div>
-          <div className="stat-card">
-            <h3>Technical Total</h3>
-            <div className="stat-number">{stats.total_technical_score || 0}</div>
-          </div>
-          <div className="stat-card">
-            <h3>Average Score</h3>
-            <div className="stat-number">{stats.average_score || 0}%</div>
-          </div>
-          <div className="stat-card">
-            <h3>Best Score</h3>
-            <div className="stat-number">{stats.best_score || 0}%</div>
-          </div>
-        </div>
-
-        <div className="dashboard-highlights">
-          <div className="highlight-card">
-            <h3>Latest Interview</h3>
+        {!hasEnoughInterviews && (
+          <div className="no-history">
             <p>
-              {stats.last_interview_at
-                ? new Date(stats.last_interview_at).toLocaleString()
-                : "No interviews yet"}
+              Complete at least 5 interviews to unlock dashboard analytics.
+              You have completed {stats.total_interviews || 0}.
             </p>
           </div>
-          <div className="highlight-card">
-            <h3>Latest Role</h3>
-            <p>{stats.last_role || "—"}</p>
+        )}
+
+        {/* Statistics Cards */}
+        {hasEnoughInterviews && (
+          <div className="stats-grid">
+            <div className="stat-card">
+              <h3>Total Interviews</h3>
+              <div className="stat-number">{stats.total_interviews || 0}</div>
+            </div>
+            <div className="stat-card">
+              <h3>Total Score</h3>
+              <div className="stat-number">{stats.total_score || 0}</div>
+            </div>
+            <div className="stat-card">
+              <h3>Behavioral Total</h3>
+              <div className="stat-number">{stats.total_behavioral_score || 0}</div>
+            </div>
+            <div className="stat-card">
+              <h3>Technical Total</h3>
+              <div className="stat-number">{stats.total_technical_score || 0}</div>
+            </div>
+            <div className="stat-card">
+              <h3>Average Score</h3>
+              <div className="stat-number">{stats.average_score || 0}%</div>
+            </div>
+            <div className="stat-card">
+              <h3>Best Score</h3>
+              <div className="stat-number">{stats.best_score || 0}%</div>
+            </div>
           </div>
-          <div className="highlight-card">
-            <h3>Latest Company</h3>
-            <p>{stats.last_company || "—"}</p>
+        )}
+
+        {hasEnoughInterviews && (
+          <div className="dashboard-highlights">
+            <div className="highlight-card">
+              <h3>Latest Interview</h3>
+              <p>
+                {stats.last_interview_at
+                  ? new Date(stats.last_interview_at).toLocaleString()
+                  : "No interviews yet"}
+              </p>
+            </div>
+            <div className="highlight-card">
+              <h3>Latest Role</h3>
+              <p>{stats.last_role || "—"}</p>
+            </div>
+            <div className="highlight-card">
+              <h3>Latest Company</h3>
+              <p>{stats.last_company || "—"}</p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Strengths and Weaknesses */}
-        <div className="strengths-weaknesses">
-          <div className="strengths">
-            <h3>Strengths</h3>
-            <ul>
-              {stats.strengths && stats.strengths.length > 0 ? (
-                stats.strengths.map((strength, index) => (
-                  <li key={index}>{strength}</li>
-                ))
-              ) : (
-                <li>Complete more interviews to see your strengths</li>
-              )}
-            </ul>
+        {hasEnoughInterviews && (
+          <div className="strengths-weaknesses">
+            <div className="strengths">
+              <h3>Strengths</h3>
+              <ul>
+                {stats.strengths && stats.strengths.length > 0 ? (
+                  stats.strengths.map((strength, index) => (
+                    <li key={index}>{strength}</li>
+                  ))
+                ) : (
+                  <li>Complete more interviews to see your strengths</li>
+                )}
+              </ul>
+            </div>
+            <div className="weaknesses">
+              <h3>Areas for Improvement</h3>
+              <ul>
+                {stats.weaknesses && stats.weaknesses.length > 0 ? (
+                  stats.weaknesses.map((weakness, index) => (
+                    <li key={index}>{weakness}</li>
+                  ))
+                ) : (
+                  <li>Complete more interviews to see areas for improvement</li>
+                )}
+              </ul>
+            </div>
           </div>
-          <div className="weaknesses">
-            <h3>Areas for Improvement</h3>
-            <ul>
-              {stats.weaknesses && stats.weaknesses.length > 0 ? (
-                stats.weaknesses.map((weakness, index) => (
-                  <li key={index}>{weakness}</li>
-                ))
-              ) : (
-                <li>Complete more interviews to see areas for improvement</li>
-              )}
-            </ul>
-          </div>
-        </div>
+        )}
 
         {/* Recent Interview History */}
-        <div className="history-section">
-          <h3>Recent Interview History</h3>
-          {history && history.length > 0 ? (
-            <div className="history-table-container">
-              <table className="history-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Type</th>
-                    <th>Role</th>
-                    <th>Company</th>
-                    <th>Question</th>
-                    <th>Your Answer</th>
-                    <th>Score</th>
-                    <th>Feedback</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.map((session) => (
-                    <tr key={session.id}>
-                      <td>{new Date(session.created_at).toLocaleDateString()}</td>
-                      <td className="type-cell">{session.type}</td>
-                      <td className="role-cell">{session.role || "—"}</td>
-                      <td className="company-cell">{session.company || "—"}</td>
-                      <td className="question-cell">{session.question}</td>
-                      <td className="answer-cell">{session.user_answer || "No answer provided"}</td>
-                      <td className={`score-cell ${session.score >= 70 ? 'good' : session.score >= 50 ? 'medium' : 'poor'}`}>
-                        {session.score}%
-                      </td>
-                      <td className="feedback-cell">
-                        {session.feedback ? (
-                          <div className="feedback-preview">
-                            {session.feedback.length > 100 
-                              ? `${session.feedback.substring(0, 100)}...` 
-                              : session.feedback
-                            }
-                          </div>
-                        ) : (
-                          <span className="no-feedback">No feedback</span>
-                        )}
-                      </td>
+        {hasEnoughInterviews && (
+          <div className="history-section">
+            <h3>Recent Interview History</h3>
+            {history && history.length > 0 ? (
+              <div className="history-table-container">
+                <table className="history-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Type</th>
+                      <th>Role</th>
+                      <th>Company</th>
+                      <th>Question</th>
+                      <th>Your Answer</th>
+                      <th>Score</th>
+                      <th>Feedback</th>
+                      <th>Notes</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="no-history">
-              <p>No interview history yet. Start practicing to see your progress!</p>
-            </div>
-          )}
-        </div>
+                  </thead>
+                  <tbody>
+                    {history.map((session) => (
+                      <tr key={session.id}>
+                        <td>{new Date(session.created_at).toLocaleDateString()}</td>
+                        <td className="type-cell">{session.type}</td>
+                        <td className="role-cell">{session.role || "—"}</td>
+                        <td className="company-cell">{session.company || "—"}</td>
+                        <td className="question-cell">{session.question}</td>
+                        <td className="answer-cell">{session.user_answer || "No answer provided"}</td>
+                        <td className={`score-cell ${session.score >= 70 ? 'good' : session.score >= 50 ? 'medium' : 'poor'}`}>
+                          {session.score}%
+                        </td>
+                        <td className="feedback-cell">
+                          {session.feedback ? (
+                            <div className="feedback-preview">
+                              {session.feedback.length > 100 
+                                ? `${session.feedback.substring(0, 100)}...` 
+                                : session.feedback
+                              }
+                            </div>
+                          ) : (
+                            <span className="no-feedback">No feedback</span>
+                          )}
+                        </td>
+                        <td className="notes-cell">
+                          {session.notes ? (
+                            <div className="notes-preview">
+                              {session.notes.length > 80
+                                ? `${session.notes.substring(0, 80)}...`
+                                : session.notes
+                              }
+                            </div>
+                          ) : (
+                            <span className="no-feedback">No notes</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="no-history">
+                <p>No interview history yet. Start practicing to see your progress!</p>
+              </div>
+            )}
+          </div>
+        )}
 
         <button onClick={fetchDashboardData} className="refresh-btn">
           Refresh Dashboard

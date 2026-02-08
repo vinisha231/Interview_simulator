@@ -104,10 +104,12 @@ def get_history(
             "type": s.interview_type,
             "role": s.role,
             "company": s.company,
+            "difficulty": s.difficulty,
             "question": s.question,
             "user_answer": s.user_answer,
             "score": s.score,
             "feedback": s.feedback,
+            "notes": s.notes,
             "created_at": s.created_at
         }
         for s in sessions
