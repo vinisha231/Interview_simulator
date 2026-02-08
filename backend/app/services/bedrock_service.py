@@ -200,7 +200,15 @@ class BedrockService:
                 "suggestions": ["Practice more examples", "Be more specific", "Improve clarity"]
             }
     
-    def generate_followup_question(self, question: str, user_answer: str, interview_type: str) -> str:
+    def generate_followup_question(
+        self,
+        question: str,
+        user_answer: str,
+        interview_type: str,
+        role: Optional[str] = None,
+        company: Optional[str] = None,
+        history: Optional[List[Dict[str, str]]] = None
+    ) -> str:
         """
         Generate a dynamic follow-up question based on the user's answer.
         
@@ -212,11 +220,24 @@ class BedrockService:
         Returns:
             A relevant follow-up question
         """
-        system_prompt = f"""You are an expert {interview_type} interviewer. Generate thoughtful 
-        follow-up questions that dig deeper into the candidate's understanding."""
+        role_context = role.strip() if role else "the role"
+        company_context = f" at {company.strip()}" if company and company.strip() else ""
+        system_prompt = (
+            f"You are an expert {interview_type} interviewer. Generate thoughtful follow-up "
+            f"questions for {role_context}{company_context} that dig deeper into the candidate's "
+            "understanding."
+        )
+        
+        history_context = ""
+        if history:
+            summarized = "\n".join(
+                [f"Q: {item.get('question','')}\nA: {item.get('answer','')}" for item in history[-5:]]
+            )
+            history_context = f"\nConversation so far:\n{summarized}\n"
         
         prompt = f"""Original question: {question}
         Candidate's answer: {user_answer}
+        {history_context}
         
         Generate a follow-up question that:
         - Builds on their answer

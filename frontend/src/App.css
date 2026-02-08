@@ -163,6 +163,50 @@ button:hover {
   text-align: left;
 }
 
+.interview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.difficulty-select {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+}
+
+.difficulty-select label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--card-text);
+}
+
+.difficulty-select select {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--input-text);
+}
+
+.resume-banner {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: var(--box-bg);
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
+.resume-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
 .question-box, .feedback-box {
   background: var(--box-bg);
   border: 2px solid var(--box-border);
@@ -434,6 +478,10 @@ textarea:disabled {
   max-width: 250px;
 }
 
+.notes-cell {
+  max-width: 220px;
+}
+
 .dashboard-highlights {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -464,6 +512,12 @@ textarea:disabled {
 }
 
 .feedback-preview {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.notes-preview {
   font-size: 12px;
   color: var(--muted);
   line-height: 1.4;
