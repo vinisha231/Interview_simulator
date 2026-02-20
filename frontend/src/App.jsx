@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import "./App.css";
 import TechnicalInterviewBox from './interviewBox';
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+const apiUrl = (path) => `${API_BASE_URL}${path}`;
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [authView, setAuthView] = useState("login");
@@ -244,7 +247,7 @@ export default function App() {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/interview/evaluate", {
+      const response = await fetch(apiUrl("/api/interview/evaluate"), {
         method: "POST",
         headers: {
           'Content-Type': 'application/json',
@@ -274,7 +277,7 @@ export default function App() {
 
         if (interviewType === "behavioral" || interviewType === "design") {
           try {
-            const followupResponse = await fetch("/api/interview/followup", {
+            const followupResponse = await fetch(apiUrl("/api/interview/followup"), {
               method: "POST",
               headers: {
                 'Content-Type': 'application/json',
@@ -299,7 +302,7 @@ export default function App() {
         }
         
         // Save session to backend
-        await fetch("/api/sessions/", {
+        await fetch(apiUrl("/api/sessions/"), {
           method: "POST",
           headers: {
             'Content-Type': 'application/json',
@@ -344,7 +347,7 @@ export default function App() {
       const token = localStorage.getItem("token");
       let response;
       if (interviewType === "behavioral") {
-        response = await fetch("/api/interview/followup", {
+        response = await fetch(apiUrl("/api/interview/followup"), {
           method: "POST",
           headers: {
             'Content-Type': 'application/json',
@@ -399,7 +402,7 @@ export default function App() {
     setIsLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/interview/evaluate", {
+      const response = await fetch(apiUrl("/api/interview/evaluate"), {
         method: "POST",
         headers: {
           'Content-Type': 'application/json',
@@ -423,7 +426,7 @@ export default function App() {
           { question: followupQuestion, answer: followupAnswer }
         ]);
 
-        await fetch("/api/sessions/", {
+        await fetch(apiUrl("/api/sessions/"), {
           method: "POST",
           headers: {
             'Content-Type': 'application/json',
@@ -464,14 +467,14 @@ export default function App() {
       }
       
       // Fetch statistics
-      const statsResponse = await fetch("/api/dashboard/stats", {
+      const statsResponse = await fetch(apiUrl("/api/dashboard/stats"), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
       // Fetch history
-      const historyResponse = await fetch("/api/dashboard/history", {
+      const historyResponse = await fetch(apiUrl("/api/dashboard/history"), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -529,7 +532,7 @@ export default function App() {
                   password: String(password || "")
                 }).toString();
                 
-                fetch('/api/auth/login', {
+                fetch(apiUrl('/api/auth/login'), {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                   body
@@ -575,7 +578,7 @@ export default function App() {
                   full_name: formData.get('full_name')
                 };
                 
-                fetch('/api/auth/register', {
+                fetch(apiUrl('/api/auth/register'), {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(userData)
