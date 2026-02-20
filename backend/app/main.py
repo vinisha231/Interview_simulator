@@ -38,9 +38,12 @@ app = FastAPI(
 # Configure CORS (Cross-Origin Resource Sharing) middleware
 # CORS allows web browsers to make requests to our API from different domains
 # This is essential when our frontend and backend are hosted separately
+origins_env = os.getenv("CORS_ORIGINS", "*")
+allowed_origins = ["*"] if origins_env.strip() == "*" else [o.strip() for o in origins_env.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow requests from any domain (in production, specify your frontend domain)
+    allow_origins=allowed_origins,
     allow_credentials=True,  # Allow cookies and authentication headers
     allow_methods=["*"],  # Allow all HTTP methods (GET, POST, PUT, DELETE, etc.)
     allow_headers=["*"],  # Allow all headers
