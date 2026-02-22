@@ -21,6 +21,7 @@ Author: LLM Interview Simulator Team
 from fastapi import APIRouter, HTTPException  # FastAPI router and error handling
 from pydantic import BaseModel  # Data validation and serialization
 from typing import Optional, List  # Type hints for better code documentation
+import random
 import re
 import asyncio  # For asynchronous operations
 
@@ -123,6 +124,60 @@ async def generate_question(
     Returns:
         dict: Generated question
     """
+    fallback = {
+        "technical": {
+            "easy": [
+                "Explain the difference between a stack and a queue.",
+                "What is an API and why is it useful?",
+                "What is a database index and what problem does it solve?"
+            ],
+            "medium": [
+                "How would you design a URL shortener? Outline key components.",
+                "Describe how caching can improve performance and where you'd use it.",
+                "Explain the difference between SQL and NoSQL databases with examples."
+            ],
+            "hard": [
+                "Design a rate limiter for a high-traffic API.",
+                "How would you detect and prevent race conditions in a distributed system?",
+                "Design a system for real-time collaboration on documents."
+            ]
+        },
+        "behavioral": {
+            "easy": [
+                "Tell me about yourself.",
+                "Describe a time you worked on a team project.",
+                "What motivates you in your work?"
+            ],
+            "medium": [
+                "Tell me about a time you faced a conflict at work and how you handled it.",
+                "Describe a situation where you had to prioritize multiple tasks.",
+                "Tell me about a time you made a mistake and what you learned."
+            ],
+            "hard": [
+                "Describe a time you led a difficult project to success.",
+                "Tell me about a time you had to persuade stakeholders to change direction.",
+                "Describe a time you had to make a decision with limited data."
+            ]
+        },
+        "design": {
+            "easy": [
+                "Design a simple to-do list app. What are the main components?",
+                "How would you design a basic URL shortener at a high level?",
+                "Design a simple messaging app with one-on-one chats."
+            ],
+            "medium": [
+                "Design a ride-sharing service at a high level.",
+                "Design a file storage system like Dropbox.",
+                "Design a news feed system with personalization."
+            ],
+            "hard": [
+                "Design a global video streaming platform.",
+                "Design a large-scale search engine.",
+                "Design a real-time analytics system for millions of events per second."
+            ]
+        }
+    }
+
     try:
         bedrock = get_bedrock_service()
         question = bedrock.generate_question(
@@ -131,16 +186,21 @@ async def generate_question(
             role=role,
             company=company
         )
-        
-        return {
-            "question": question,
-            "interview_type": interview_type,
-            "difficulty": difficulty,
-            "role": role,
-            "company": company
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating question: {str(e)}")
+        model_id = bedrock.model_id
+    except Exception:
+        safe_type = interview_type if interview_type in fallback else "technical"
+        safe_level = difficulty if difficulty in fallback[safe_type] else "medium"
+        question = random.choice(fallback[safe_type][safe_level])
+        model_id = "local-fallback"
+
+    return {
+        "question": question,
+        "interview_type": interview_type,
+        "difficulty": difficulty,
+        "role": role,
+        "company": company,
+        "model": model_id
+    }
 
 # Define an endpoint to evaluate user answers
 @router.post("/evaluate", response_model=InterviewResponse)

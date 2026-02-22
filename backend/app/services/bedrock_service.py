@@ -32,12 +32,13 @@ bedrock_runtime = boto3.client(
 # Available models
 CLAUDE_MODEL = "anthropic.claude-3-sonnet-20240229-v1:0"
 LLAMA_MODEL = "meta.llama2-70b-chat-v1"
+DEFAULT_MODEL = os.getenv("BEDROCK_MODEL_ID", CLAUDE_MODEL)
 
 
 class BedrockService:
     """Service for interacting with AWS Bedrock to generate questions and evaluate answers."""
     
-    def __init__(self, model_id: str = CLAUDE_MODEL):
+    def __init__(self, model_id: str = DEFAULT_MODEL):
         """
         Initialize the Bedrock service.
         

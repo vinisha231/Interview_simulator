@@ -9,10 +9,38 @@ can incur charges. Do not run paid-resource commands unless you are ready.
 
 ## 1) Backend: Elastic Beanstalk (FastAPI)
 
-### Prereqs
-- AWS CLI configured
-- EB CLI installed
-- `backend/.env` populated (do not commit this file)
+### Prereqs (step-by-step)
+1) Create an AWS account and set a budget alert (paid services)
+2) Install AWS CLI:
+```
+brew install awscli
+```
+3) Configure AWS CLI:
+```
+aws configure
+```
+Provide access key, secret, region, and output format.
+
+4) Install EB CLI:
+```
+pip install awsebcli
+```
+5) Verify EB CLI:
+```
+eb --version
+```
+
+6) Install Node.js (for frontend builds):
+```
+brew install node
+```
+
+7) Ensure Python 3.10+ is available:
+```
+python3 --version
+```
+
+8) Populate `backend/.env` (do not commit this file)
 
 ### Step-by-step: first-time deploy
 1) Install dependencies locally (optional but recommended for validation)
