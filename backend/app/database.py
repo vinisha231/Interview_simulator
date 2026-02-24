@@ -1,13 +1,15 @@
 import json
 import os
 import subprocess
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 
-# Load environment variables (e.g. from .env locally)
-load_dotenv()
+# Load .env from backend root (so it works even when run from project root or IDE)
+_backend_root = Path(__file__).resolve().parent.parent
+load_dotenv(_backend_root / ".env")
 
 
 def _load_elastic_beanstalk_env() -> None:

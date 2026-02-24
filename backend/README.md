@@ -42,7 +42,7 @@ backend/
 
 1. **Clone the repository**
    ```bash
-   git clone <insert-url-hre>
+   git clone <repo-url>
    cd llm-interview-simulator/backend
    ```
 
@@ -51,16 +51,20 @@ backend/
    pip install -r requirements.txt
    ```
 
-3. **Run the application**
+3. **Environment and database**
+   - Copy `.env.example` to `.env` and set at least `DATABASE_URL` (and optionally `SECRET_KEY`, `AWS_*` for Bedrock).
+   - Create tables: `alembic upgrade head`
+
+4. **Run the application**
    ```bash
    # Option 1: Direct execution
    python app/main.py
-   
-   # Option 2: Using uvicorn
+
+   # Option 2: Using uvicorn (recommended)
    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
    ```
 
-4. **Access the application**
+5. **Access the application**
    - API: http://localhost:8000
    - Interactive docs: http://localhost:8000/docs
    - Health check: http://localhost:8000/health

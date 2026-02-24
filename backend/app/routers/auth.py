@@ -1,7 +1,10 @@
+import os
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
+from sqlalchemy.exc import SQLAlchemyError
 from app.database import SessionLocal
 from app.models.user import User
 from pydantic import BaseModel, EmailStr
@@ -11,12 +14,14 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 import secrets
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-# Security configuration
-SECRET_KEY = secrets.token_urlsafe(32)  # In production, use environment variable
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+# Security configuration (use env so login works on EB and across restarts)
+SECRET_KEY = os.getenv("SECRET_KEY") or secrets.token_urlsafe(32)
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
@@ -108,84 +113,124 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
     return current_user
 
 
+def _db_error_detail(ex: Exception) -> str:
+    """Turn DB errors into a clear message for the client."""
+    msg = str(ex).lower()
+    if "relation" in msg and "does not exist" in msg:
+        return "Database tables missing. Run in backend: alembic upgrade head"
+    if "connection" in msg or "could not connect" in msg or "refused" in msg:
+        return "Cannot connect to database. Check DATABASE_URL and that the DB is running."
+    return "Database error. Check DATABASE_URL and run: alembic upgrade head"
+
+
 # API Routes
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
     """
     Register a new user.
-    
+
     - **username**: Unique username (required)
     - **email**: Valid email address (required)
     - **password**: Password (will be hashed)
     - **full_name**: Optional full name
     """
-    # Check if user already exists
-    db_user = db.query(User).filter(
-        (User.username == user_data.username) | (User.email == user_data.email)
-    ).first()
-    
-    if db_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username or email already registered"
+    try:
+        # Check if user already exists
+        db_user = db.query(User).filter(
+            (User.username == user_data.username) | (User.email == user_data.email)
+        ).first()
+
+        if db_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username or email already registered",
+            )
+
+        # Create new user
+        hashed_password = get_password_hash(user_data.password)
+        new_user = User(
+            username=user_data.username,
+            email=user_data.email,
+            hashed_password=hashed_password,
+            full_name=user_data.full_name,
         )
-    
-    # Create new user
-    hashed_password = get_password_hash(user_data.password)
-    new_user = User(
-        username=user_data.username,
-        email=user_data.email,
-        hashed_password=hashed_password,
-        full_name=user_data.full_name
-    )
-    
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    
-    return new_user
+
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+
+        return new_user
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        logger.exception("Register DB error")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_db_error_detail(e),
+        )
+    except Exception as e:
+        logger.exception("Register error")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=_db_error_detail(e),
+        )
 
 
 @router.post("/login", response_model=Token)
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Login with username and password.
-    
+
     Returns JWT access token.
     """
-    # Authenticate user
-    identifier = (form_data.username or "").strip().lower()
-    user = db.query(User).filter(
-        or_(
-            func.lower(User.username) == identifier,
-            func.lower(User.email) == identifier
+    try:
+        # Authenticate user
+        identifier = (form_data.username or "").strip().lower()
+        user = db.query(User).filter(
+            or_(
+                func.lower(User.username) == identifier,
+                func.lower(User.email) == identifier,
+            )
+        ).first()
+
+        if not user or not verify_password(form_data.password, user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        if not user.is_active:
+            raise HTTPException(status_code=400, detail="Inactive user")
+
+        # Create access token
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.username}, expires_delta=access_token_expires
         )
-    ).first()
-    
-    if not user or not verify_password(form_data.password, user.hashed_password):
+
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": user,
+        }
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        logger.exception("Login DB error")
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_db_error_detail(e),
         )
-    
-    if not user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    
-    # Create access token
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": user
-    }
+    except Exception as e:
+        logger.exception("Login error")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=_db_error_detail(e),
+        )
 
 
 @router.get("/me", response_model=UserResponse)

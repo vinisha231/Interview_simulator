@@ -178,6 +178,8 @@ async def generate_question(
         }
     }
 
+    question = None
+    model_id = "local-fallback"
     try:
         bedrock = get_bedrock_service()
         question = bedrock.generate_question(
@@ -186,12 +188,16 @@ async def generate_question(
             role=role,
             company=company
         )
-        model_id = bedrock.model_id
-    except Exception:
+        model_id = getattr(bedrock, "model_id", "bedrock")
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("Bedrock generate_question failed, using fallback: %s", e)
+
+    if not question:
         safe_type = interview_type if interview_type in fallback else "technical"
-        safe_level = difficulty if difficulty in fallback[safe_type] else "medium"
-        question = random.choice(fallback[safe_type][safe_level])
-        model_id = "local-fallback"
+        safe_level = difficulty if difficulty in fallback.get(safe_type, fallback["technical"]) else "medium"
+        questions_list = fallback.get(safe_type, fallback["technical"]).get(safe_level, fallback["technical"]["medium"])
+        question = random.choice(questions_list)
 
     return {
         "question": question,

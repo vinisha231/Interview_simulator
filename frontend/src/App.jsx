@@ -217,21 +217,22 @@ export default function App() {
       if (company.trim()) {
         params.set("company", company.trim());
       }
-      const response = await fetch(`/api/interview/generate-question?${params.toString()}`, {
+      const response = await fetch(apiUrl(`/api/interview/generate-question?${params.toString()}`), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+      const data = await response.json().catch(() => ({}));
       if (response.ok) {
-        const data = await response.json();
         setCurrentQuestion(data.question);
       } else {
-        alert("Failed to generate question. Please try again.");
+        const msg = data?.detail;
+        const text = typeof msg === "string" ? msg : (Array.isArray(msg) && msg[0]?.msg) ? msg[0].msg : "Failed to generate question.";
+        alert("Failed to generate question: " + text);
       }
     } catch (error) {
       console.error("Error generating question:", error);
-      alert("Error generating question. Please try again.");
+      alert("Error generating question: " + (error.message || "Check console and ensure backend is running on port 8000."));
     } finally {
       setIsLoading(false);
     }
@@ -537,13 +538,20 @@ export default function App() {
                   headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                   body
                 })
-                .then(res => {
-                  return res.json().then((json) => {
-                    if (!res.ok) {
-                      throw new Error(json?.detail || "Invalid username or password.");
-                    }
-                    return json;
-                  });
+                .then(async (res) => {
+                  let json = {};
+                  try {
+                    json = await res.json();
+                  } catch (_) {
+                    if (!res.ok) throw new Error('Server error or backend not running. Start backend on port 8000.');
+                    throw new Error('Invalid response from server');
+                  }
+                  if (!res.ok) {
+                    const d = json?.detail;
+                    const msg = typeof d === 'string' ? d : (Array.isArray(d) && d[0]?.msg) ? d[0].msg : 'Invalid username or password.';
+                    throw new Error(msg);
+                  }
+                  return json;
                 })
                 .then(data => {
                   if (data.access_token) {
@@ -556,7 +564,12 @@ export default function App() {
                 })
                 .catch(err => {
                   console.error('Login failed:', err);
-                  alert('Login failed: ' + err.message);
+                  const msg = err.message || '';
+                  const isNetwork = /load failed|failed to fetch|networkerror|network error/i.test(msg) || err.name === 'TypeError';
+                  const friendly = isNetwork
+                    ? "Can't reach the server. Use the app at http://localhost:5173 (npm run dev) and ensure the backend is running: cd backend && uvicorn app.main:app --reload"
+                    : "Login failed: " + msg;
+                  alert(friendly);
                 });
               }}>
                 <input name="username" placeholder="Username" required />
@@ -583,13 +596,20 @@ export default function App() {
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(userData)
                 })
-                .then(res => {
-                  return res.json().then((json) => {
-                    if (!res.ok) {
-                      throw new Error(json?.detail || "Registration failed.");
-                    }
-                    return json;
-                  });
+                .then(async (res) => {
+                  let json = {};
+                  try {
+                    json = await res.json();
+                  } catch (_) {
+                    if (!res.ok) throw new Error('Server error or backend not running. Start backend on port 8000.');
+                    throw new Error('Invalid response from server');
+                  }
+                  if (!res.ok) {
+                    const d = json?.detail;
+                    const msg = typeof d === 'string' ? d : (Array.isArray(d) && d[0]?.msg) ? d[0].msg : 'Registration failed.';
+                    throw new Error(msg);
+                  }
+                  return json;
                 })
                 .then(data => {
                   if (data.id) {
@@ -601,7 +621,12 @@ export default function App() {
                 })
                 .catch(err => {
                   console.error('Registration failed:', err);
-                  alert('Registration failed: ' + err.message);
+                  const msg = err.message || '';
+                  const isNetwork = /load failed|failed to fetch|networkerror|network error/i.test(msg) || err.name === 'TypeError';
+                  const friendly = isNetwork
+                    ? "Can't reach the server. Use the app at http://localhost:5173 (npm run dev) and ensure the backend is running: cd backend && uvicorn app.main:app --reload"
+                    : "Registration failed: " + msg;
+                  alert(friendly);
                 });
               }}>
                 <input name="full_name" placeholder="Full Name" required />

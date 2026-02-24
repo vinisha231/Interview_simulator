@@ -23,9 +23,12 @@ import os  # For environment variables
 from dotenv import load_dotenv  # For loading .env files
 import uvicorn  # ASGI server for running FastAPI
 
-# Load environment variables from .env file (if it exists)
-# This allows us to store sensitive information like API keys separately
-load_dotenv()
+# Load .env from backend root so it works regardless of current working directory
+from pathlib import Path
+_backend_root = Path(__file__).resolve().parent.parent
+load_dotenv(_backend_root / ".env")
+# Load database (and on EB, inject env from get-config) before routers so Bedrock sees AWS_* and BEDROCK_MODEL_ID
+import app.database  # noqa: E402, F401
 
 # Create the FastAPI application instance
 # This is the main object that handles all our API endpoints

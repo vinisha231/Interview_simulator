@@ -17,83 +17,92 @@ Author: LLM Interview Simulator Team
 
 import boto3
 import json
+import logging
 from typing import Dict, List, Optional
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Initialize Bedrock client
-bedrock_runtime = boto3.client(
-    'bedrock-runtime',
-    region_name=os.getenv('AWS_REGION', 'us-east-1')
-)
+logger = logging.getLogger(__name__)
 
-# Available models
+# Available models (use BEDROCK_MODEL_ID in env to override)
 CLAUDE_MODEL = "anthropic.claude-3-sonnet-20240229-v1:0"
+CLAUDE_V2 = "anthropic.claude-3-5-sonnet-v2:0"  # Newer if available in your region
 LLAMA_MODEL = "meta.llama2-70b-chat-v1"
 DEFAULT_MODEL = os.getenv("BEDROCK_MODEL_ID", CLAUDE_MODEL)
 
 
+def _get_bedrock_client():
+    """Lazy client so env (e.g. from EB get-config) is loaded first."""
+    return boto3.client(
+        "bedrock-runtime",
+        region_name=os.getenv("AWS_REGION", "us-east-1"),
+    )
+
+
 class BedrockService:
     """Service for interacting with AWS Bedrock to generate questions and evaluate answers."""
-    
+
     def __init__(self, model_id: str = DEFAULT_MODEL):
         """
         Initialize the Bedrock service.
-        
+
         Args:
             model_id: The Bedrock model to use (default: Claude 3 Sonnet)
         """
         self.model_id = model_id
-        self.bedrock = bedrock_runtime
-    
+
+    @property
+    def bedrock(self):
+        """Lazy client so env vars (e.g. from EB) are available."""
+        if not hasattr(self, "_bedrock"):
+            self._bedrock = _get_bedrock_client()
+        return self._bedrock
+
     def _invoke_model(self, prompt: str, system_prompt: str = None) -> str:
         """
         Invoke Bedrock model with a prompt.
-        
-        Args:
-            prompt: The user prompt
-            system_prompt: Optional system prompt for behavior
-            
-        Returns:
-            The model's response text
+
+        Claude Messages API requires message content as an array of blocks: [{"type": "text", "text": "..."}].
         """
         try:
-            # Prepare the message structure
-            messages = [{"role": "user", "content": prompt}]
-            
             if self.model_id.startswith("anthropic.claude"):
-                # Claude format
+                # Claude Messages API: content must be array of content blocks
+                messages = [
+                    {"role": "user", "content": [{"type": "text", "text": prompt}]}
+                ]
                 body = json.dumps({
                     "anthropic_version": "bedrock-2023-05-31",
-                    "max_tokens": 4000,
+                    "max_tokens": 1024,
                     "messages": messages,
-                    "system": system_prompt or "You are an expert interview evaluator."
+                    "system": system_prompt or "You are an expert interview evaluator.",
                 })
             else:
-                # Llama format
+                # Llama 2 on Bedrock uses prompt-based format (no messages array)
                 body = json.dumps({
-                    "prompt": f"{system_prompt}\n\nUser: {prompt}\n\nAssistant:",
-                    "max_gen_len": 4000
+                    "prompt": f"{system_prompt or ''}\n\nUser: {prompt}\n\nAssistant:",
+                    "max_gen_len": 1024,
                 })
-            
-            # Invoke the model
+
             response = self.bedrock.invoke_model(
                 modelId=self.model_id,
-                body=body
+                body=body,
             )
-            
-            # Parse response
-            response_body = json.loads(response['body'].read())
-            
+            response_body = json.loads(response["body"].read())
+
             if self.model_id.startswith("anthropic.claude"):
-                return response_body['content'][0]['text']
+                content = response_body.get("content") or []
+                if isinstance(content, list) and len(content) > 0:
+                    block = content[0]
+                    if isinstance(block, dict) and "text" in block:
+                        return block["text"].strip()
+                raise ValueError("Unexpected Claude response structure")
             else:
-                return response_body['generation']
-                
+                return (response_body.get("generation") or "").strip()
+
         except Exception as e:
-            print(f"Error invoking Bedrock: {str(e)}")
+            logger.warning("Bedrock invoke_model failed: %s", e)
             raise
     
     def generate_question(
