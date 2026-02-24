@@ -111,43 +111,52 @@ class BedrockService:
         difficulty: str = "medium",
         previous_questions: List[str] = None,
         role: Optional[str] = None,
-        company: Optional[str] = None
+        company: Optional[str] = None,
+        language: Optional[str] = None,
     ) -> str:
         """
         Generate an interview question using Bedrock.
-        
+
         Args:
             interview_type: Type of interview (technical, behavioral, etc.)
             difficulty: Difficulty level (easy, medium, hard)
             previous_questions: List of previously asked questions
-            
+            role: Optional role context
+            company: Optional company context
+            language: Optional programming language (e.g. Python, Java) to focus the question on
+
         Returns:
             A generated interview question
         """
         role_context = role.strip() if role else "the role"
         company_context = f" at {company.strip()}" if company and company.strip() else ""
+        lang_context = ""
+        if language and language.strip():
+            lang_context = f" Focus on {language.strip()} (programming language). Ask about concepts, best practices, or problems relevant to {language.strip()}."
         system_prompt = (
             f"You are an expert {interview_type} interviewer. Generate relevant, challenging "
             f"interview questions for {role_context}{company_context} that assess both technical "
-            "knowledge and communication skills."
+            "knowledge and communication skills." + lang_context
         )
-        
+
         context = ""
         if previous_questions:
             context = f"\nYou've already asked: {', '.join(previous_questions[-3:])}\nAvoid repeating these."
-        
+
         prompt = f"""Generate a {difficulty} difficulty {interview_type} interview question.
         Role: {role_context}{company_context}
+        {f'Programming language: {language.strip()}.' if language and language.strip() else ''}
         {context}
-        
+
         The question should be:
         - Clear and concise
         - Appropriate for the difficulty level
         - Relevant to real-world scenarios
-        
+        {f'- Specific to {language.strip()} (syntax, idioms, or ecosystem where relevant).' if language and language.strip() else ''}
+
         Return ONLY the question, no additional text.
         """
-        
+
         return self._invoke_model(prompt, system_prompt)
     
     def evaluate_answer(self, question: str, user_answer: str, interview_type: str) -> Dict:

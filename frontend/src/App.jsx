@@ -14,6 +14,7 @@ export default function App() {
   const [role, setRole] = useState("");
   const [company, setCompany] = useState("");
   const [difficulty, setDifficulty] = useState("medium");
+  const [language, setLanguage] = useState("Python");
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [userAnswer, setUserAnswer] = useState("");
   const [conversation, setConversation] = useState([]);
@@ -214,9 +215,8 @@ export default function App() {
         difficulty,
         role: role.trim()
       });
-      if (company.trim()) {
-        params.set("company", company.trim());
-      }
+      if (company.trim()) params.set("company", company.trim());
+      if (type === "technical" && language) params.set("language", language);
       const response = await fetch(apiUrl(`/api/interview/generate-question?${params.toString()}`), {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -369,10 +369,9 @@ export default function App() {
           difficulty,
           role: role.trim()
         });
-        if (company.trim()) {
-          params.set("company", company.trim());
-        }
-        response = await fetch(`/api/interview/generate-question?${params.toString()}`, {
+        if (company.trim()) params.set("company", company.trim());
+        if (interviewType === "technical" && language) params.set("language", language);
+        response = await fetch(apiUrl(`/api/interview/generate-question?${params.toString()}`), {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -686,6 +685,24 @@ export default function App() {
               </select>
             </label>
           </div>
+
+          <div className="language-select">
+            <label>
+              Programming language (for technical interviews):
+              <select value={language} onChange={(e) => setLanguage(e.target.value)} disabled={isLoading}>
+                <option value="Python">Python</option>
+                <option value="JavaScript">JavaScript</option>
+                <option value="Java">Java</option>
+                <option value="C">C</option>
+                <option value="C++">C++</option>
+                <option value="C#">C#</option>
+                <option value="Go">Go</option>
+                <option value="Rust">Rust</option>
+                <option value="TypeScript">TypeScript</option>
+                <option value="SQL">SQL</option>
+              </select>
+            </label>
+          </div>
           
           <div className="interview-types">
             <button 
@@ -744,17 +761,6 @@ export default function App() {
           </div>
         </div>
 
-        <div className="answer-section">
-          <h3>Session Notes</h3>
-          <textarea
-            value={sessionNotes}
-            onChange={(e) => setSessionNotes(e.target.value)}
-            placeholder="Add notes about this interview..."
-            rows={4}
-            disabled={isLoading}
-          />
-        </div>
-
         {!feedback && ( 
           <TechnicalInterviewBox
             userAnswer={userAnswer}
@@ -765,8 +771,19 @@ export default function App() {
             recognitionRef={recognitionRef}
             isLoading={isLoading}
             isTechnical={interviewType === "technical"}
+            programmingLanguage={language}
           />
         )}
+        <div className="answer-section session-notes-section">
+          <h3>Session Notes</h3>
+          <textarea
+            value={sessionNotes}
+            onChange={(e) => setSessionNotes(e.target.value)}
+            placeholder="Add notes about this interview..."
+            rows={4}
+            disabled={isLoading}
+          />
+        </div>
         {feedback && (
           <div className="feedback-section">
             <h3>Feedback & Score:</h3>

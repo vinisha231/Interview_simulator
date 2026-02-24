@@ -1,5 +1,18 @@
 import React, { useMemo } from 'react';
 
+const LANGUAGE_EXT = {
+  Python: "py",
+  JavaScript: "js",
+  Java: "java",
+  C: "c",
+  "C++": "cpp",
+  "C#": "cs",
+  Go: "go",
+  Rust: "rs",
+  TypeScript: "ts",
+  SQL: "sql",
+};
+
 export default function TechnicalInterviewBox({
   userAnswer,
   setUserAnswer,
@@ -8,8 +21,12 @@ export default function TechnicalInterviewBox({
   setIsListening,
   recognitionRef,
   isLoading,
-  isTechnical
+  isTechnical,
+  programmingLanguage = "Python",
 }) {
+  const solutionFileName = isTechnical
+    ? `solution.${LANGUAGE_EXT[programmingLanguage] || "py"}`
+    : null;
   const lineCount = useMemo(
     () => Math.max(1, userAnswer.split("\n").length),
     [userAnswer]
@@ -26,7 +43,7 @@ export default function TechnicalInterviewBox({
               <span className="ide-dot yellow" />
               <span className="ide-dot green" />
             </div>
-            <div className="ide-tab">solution.js</div>
+            <div className="ide-tab">{solutionFileName || "solution.js"}</div>
             <div className="ide-spacer" />
           </div>
           <div className="ide-editor">

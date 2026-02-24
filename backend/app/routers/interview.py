@@ -110,7 +110,8 @@ async def generate_question(
     interview_type: str = "technical",
     difficulty: str = "medium",
     role: Optional[str] = None,
-    company: Optional[str] = None
+    company: Optional[str] = None,
+    language: Optional[str] = None,
 ):
     """
     Generate a new interview question using AWS Bedrock.
@@ -186,7 +187,8 @@ async def generate_question(
             interview_type=interview_type,
             difficulty=difficulty,
             role=role,
-            company=company
+            company=company,
+            language=language,
         )
         model_id = getattr(bedrock, "model_id", "bedrock")
     except Exception as e:
