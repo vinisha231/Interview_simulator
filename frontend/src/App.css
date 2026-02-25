@@ -354,6 +354,11 @@ textarea:disabled {
   margin: 30px 0;
 }
 
+.stats-grid-top {
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 20px;
+}
+
 .stat-card {
   background: var(--stat-bg);
   border: 1px solid var(--border);
@@ -409,6 +414,11 @@ textarea:disabled {
   margin: 0 0 15px 0;
 }
 
+/* Areas for Improvement: stays right of Strengths, content left-aligned */
+.areas-improvement-centered {
+  text-align: left;
+}
+
 .strengths ul, .weaknesses ul {
   list-style: none;
   padding: 0;
@@ -423,6 +433,15 @@ textarea:disabled {
 
 .strengths li:last-child, .weaknesses li:last-child {
   border-bottom: none;
+}
+
+.strength-feedback,
+.improvement-feedback {
+  margin-top: 8px;
+  font-size: 0.95em;
+  color: var(--muted);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .history-section {
@@ -465,7 +484,12 @@ textarea:disabled {
   font-weight: bold;
 }
 
-.question-cell, .answer-cell {
+.question-cell,
+.answer-cell,
+.feedback-cell,
+.notes-cell {
+  text-align: left;
+  vertical-align: middle;
   max-width: 200px;
   word-wrap: break-word;
   font-size: 13px;
@@ -719,6 +743,10 @@ textarea:disabled {
 
 @media (max-width: 768px) {
   .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stats-grid-top {
     grid-template-columns: repeat(2, 1fr);
   }
   

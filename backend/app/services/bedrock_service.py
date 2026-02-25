@@ -158,64 +158,111 @@ class BedrockService:
         """
 
         return self._invoke_model(prompt, system_prompt)
-    
+
+    def _rubric_for_type(self, interview_type: str) -> str:
+        """Return the evaluation rubric for the given interview type."""
+        rubrics = {
+            "technical": """
+TECHNICAL INTERVIEW RUBRIC — Compare the candidate's answer to standard, widely-accepted solutions (e.g. textbook, LeetCode-style, or common interview answers). Score relative to that baseline.
+
+• Problem understanding: Did they clarify the question, state assumptions, or show they understood?
+• Approach & structure: Did they outline a clear approach or plan? Does it align with the standard approach for this type of problem?
+• Technical accuracy: Is their solution correct compared to the canonical answer? Correct time complexity and space complexity (Big-O) are critical—compare to what the standard solution would state (e.g. O(n) time, O(1) space). Deduct for wrong or missing complexity.
+• Complexity & edge cases: Did they state time and space complexity? Are those values correct compared to the baseline? Did they consider edge cases or trade-offs?
+• Communication: Clarity, concision, and how easy it is to follow their reasoning.
+
+BASELINE SCORING: Use your knowledge of correct answers (standard algorithms, known time/space complexity). overall_score 0-100 should reflect how close the candidate's answer is to that baseline—full marks only when correctness and complexity match or are very close to the standard answer; deduct clearly for wrong complexity or missing complexity analysis.
+Feedback must reference the rubric and, when relevant, state what the standard/baseline answer would say (e.g. correct time/space complexity) and how the candidate compared.
+Give feedback in the same style as behavioral: start with a concrete, descriptive strength (what they said or did and why it was effective), then specific, actionable feedback tied to the rubric.""",
+            "behavioral": """
+BEHAVIORAL INTERVIEW RUBRIC (STAR) — Score 1-5 on each dimension based on the response:
+• Situation: Did they set context clearly (when, where, who was involved)?
+• Task: Did they describe their responsibility or the challenge?
+• Action: Did they explain what THEY did (specific steps, not "we")? Enough detail?
+• Result: Did they share an outcome, metric, or lesson learned?
+• Overall impact & relevance: Was the example relevant to the question and convincing?
+Feedback must reference the rubric: what was strong, what was missing or weak.""",
+            "design": """
+SYSTEM DESIGN INTERVIEW RUBRIC — Score 1-5 on each dimension based on the response:
+• Requirements & scope: Did they clarify or state requirements, constraints, and scale?
+• High-level design: Did they describe main components, architecture, or data flow?
+• Key components & APIs: Enough detail on critical parts (e.g. storage, APIs, services)?
+• Scalability & reliability: Did they consider scale, bottlenecks, replication, or failure?
+• Trade-offs: Did they discuss pros/cons or design trade-offs?
+Feedback must reference the rubric: what was strong, what was missing or weak.
+Give feedback in the same style as behavioral: start with a concrete, descriptive strength (what they said or did and why it was effective), then specific, actionable feedback tied to the rubric.""",
+        }
+        return rubrics.get(
+            interview_type.lower(),
+            "Score 1-5 on: Communication, Technical Accuracy, Problem-Solving, Professional Tone. Feedback must be specific to the response."
+        )
+
     def evaluate_answer(self, question: str, user_answer: str, interview_type: str) -> Dict:
         """
-        Evaluate a user's answer using Bedrock with structured scoring.
-        
-        Args:
-            question: The interview question
-            user_answer: The user's response
-            interview_type: Type of interview
-            
-        Returns:
-            A dictionary containing feedback, scores, and suggestions
+        Evaluate an interview answer using Bedrock with rubric-based scoring and feedback.
         """
-        system_prompt = """You are an expert interview evaluator. Provide detailed, constructive 
-        feedback and numerical scores (1-5 scale) across multiple dimensions: Communication, 
-        Technical Accuracy, Problem-Solving, and Professional Tone."""
+        rubric = self._rubric_for_type(interview_type)
+        system_prompt = """You are an expert interview evaluator. Score and give feedback strictly
+        based on the provided rubric for this interview type. Always start feedback with a
+        descriptive strength: something specific the candidate said or did that was strong. Then
+        give constructive feedback tied to the rubric criteria."""
         
-        prompt = f"""Evaluate this interview answer and provide:
-        
-        1. Overall feedback (2-3 sentences)
-        2. A score from 1-5 for each dimension:
-           - Communication (clarity, articulation)
-           - Technical Accuracy (correctness of technical content)
-           - Problem-Solving (approach and logic)
-           - Professional Tone (appropriate language and demeanor)
-        3. Three specific improvement suggestions
-        
-        Question: {question}
-        Answer: {user_answer}
-        Interview Type: {interview_type}
-        
-        Format your response as JSON:
-        {{
-            "feedback": "overall feedback text",
-            "communication_score": <1-5>,
-            "technical_score": <1-5>,
-            "problem_solving_score": <1-5>,
-            "professional_tone_score": <1-5>,
-            "suggestions": ["suggestion1", "suggestion2", "suggestion3"]
-        }}
-        
-        Return ONLY valid JSON, no markdown formatting.
-        """
+        baseline_note = (
+            " For TECHNICAL: compare the answer to the standard/canonical solution (e.g. correct time/space complexity); score 0-100 relative to that baseline."
+            if (interview_type or "").lower() == "technical" else ""
+        )
+        prompt = f"""Evaluate this interview answer using the rubric below. Score and provide feedback
+        based only on the candidate's response and the rubric.{baseline_note}
+
+{rubric}
+
+1. strength_highlight: One to two descriptive sentences on what the candidate did well.
+2. feedback: Start with that strength, then 2-3 sentences of feedback that reference the rubric (what met criteria, what was missing or could improve).
+3. Score each dimension 1-5 (map rubric dimensions to: communication_score, technical_score, problem_solving_score, professional_tone_score).
+4. overall_score: One number 0-100 reflecting how well the response satisfied the rubric overall.
+5. suggestions: Three specific improvement suggestions tied to the rubric.
+
+Question: {question}
+Answer: {user_answer}
+Interview Type: {interview_type}
+
+Format your response as JSON:
+{{
+    "strength_highlight": "1-2 sentences on what they did well",
+    "feedback": "Strength first, then rubric-based feedback.",
+    "communication_score": <1-5>,
+    "technical_score": <1-5>,
+    "problem_solving_score": <1-5>,
+    "professional_tone_score": <1-5>,
+    "overall_score": <0-100>,
+    "suggestions": ["suggestion1", "suggestion2", "suggestion3"]
+}}
+
+Return ONLY valid JSON, no markdown formatting.
+"""
         
         response = self._invoke_model(prompt, system_prompt)
         
         try:
-            # Parse the JSON response
             result = json.loads(response)
+            # Ensure overall_score exists; derive from 1-5 scores if missing
+            if "overall_score" not in result or result["overall_score"] is None:
+                c = result.get("communication_score", 3)
+                t = result.get("technical_score", 3)
+                p = result.get("problem_solving_score", 3)
+                pr = result.get("professional_tone_score", 3)
+                result["overall_score"] = int(((c + t + p + pr) / 4) * 20)
             return result
         except json.JSONDecodeError:
-            # Fallback if JSON parsing fails
+            first_line = response.split('\n')[0] if response else "Evaluation in progress."
             return {
-                "feedback": response.split('\n')[0] if response else "Evaluation in progress.",
+                "strength_highlight": "You provided a complete answer with relevant content.",
+                "feedback": first_line,
                 "communication_score": 3,
                 "technical_score": 3,
                 "problem_solving_score": 3,
                 "professional_tone_score": 3,
+                "overall_score": 60,
                 "suggestions": ["Practice more examples", "Be more specific", "Improve clarity"]
             }
     
@@ -254,6 +301,12 @@ class BedrockService:
             )
             history_context = f"\nConversation so far:\n{summarized}\n"
         
+        technical_instruction = ""
+        if (interview_type or "").lower() == "technical":
+            technical_instruction = """
+        For technical interviews, the follow-up MUST be about time and space complexity. If the candidate has NOT yet discussed complexity, return exactly: "What is the time complexity and space complexity of your approach?" If they already discussed complexity, return one of: "How would you improve the time or space complexity?" or "Can you analyze the Big-O of an alternative approach?" or a short question asking for optimization. Do not add extra text—return ONLY the question.
+        """
+        
         prompt = f"""Original question: {question}
         Candidate's answer: {user_answer}
         {history_context}
@@ -263,6 +316,7 @@ class BedrockService:
         - Tests deeper understanding
         - Is relevant to {interview_type} interviews
         - Is concise and clear
+        {technical_instruction}
         
         Return ONLY the question.
         """

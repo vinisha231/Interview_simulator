@@ -8,6 +8,7 @@ const apiUrl = (path) => `${API_BASE_URL}${path}`;
 export default function App() {
   const [user, setUser] = useState(null);
   const [authView, setAuthView] = useState("login");
+  const [loginPrefill, setLoginPrefill] = useState(null);
   const [currentView, setCurrentView] = useState("interview");
   const [interviewType, setInterviewType] = useState(null);
   const [theme, setTheme] = useState("dark");
@@ -49,10 +50,14 @@ export default function App() {
     recognition.interimResults = true;
 
     recognition.onresult = (event) => {
-      const speechToText = Array.from(event.results)
-        .map(result => result[0].transcript)
-        .join('');
-      setUserAnswer(speechToText);
+      const results = Array.from(event.results);
+      const last = results[results.length - 1];
+      if (last.isFinal) {
+        const speechToText = results.map(r => r[0].transcript).join('').trim();
+        if (speechToText) {
+          setUserAnswer(prev => (prev ? prev + " " : "") + speechToText);
+        }
+      }
     };
 
     recognition.onend = () => setIsListening(false);
@@ -318,6 +323,7 @@ export default function App() {
             user_answer: userAnswer,
             feedback: data.feedback,
             score: data.score,
+            strength_highlight: data.strength_highlight || null,
             notes: sessionNotes.trim() || null
           })
         });
@@ -441,6 +447,7 @@ export default function App() {
             user_answer: followupAnswer,
             feedback: data.feedback,
             score: data.score,
+            strength_highlight: data.strength_highlight || null,
             notes: sessionNotes.trim() || null
           })
         });
@@ -520,7 +527,7 @@ export default function App() {
           <p>Practice interviews with AI-powered feedback</p>
           
           {authView === "login" ? (
-            <div>
+            <div key="login">
               <h2>Login</h2>
               <form onSubmit={(e) => {
                 e.preventDefault();
@@ -556,6 +563,7 @@ export default function App() {
                   if (data.access_token) {
                     localStorage.setItem('token', data.access_token);
                     localStorage.setItem('user', JSON.stringify(data.user));
+                    setLoginPrefill(null);
                     handleLogin(data.user);
                   } else {
                     alert('Login failed: Invalid response from server');
@@ -571,14 +579,14 @@ export default function App() {
                   alert(friendly);
                 });
               }}>
-                <input name="username" placeholder="Username" required />
-                <input name="password" type="password" placeholder="Password" required />
+                <input name="username" placeholder="Username" type="text" autoComplete="username" defaultValue={loginPrefill?.username ?? ""} required />
+                <input name="password" type="password" placeholder="Password" autoComplete="current-password" defaultValue={loginPrefill?.password ?? ""} required />
                 <button type="submit">Login</button>
               </form>
-              <button onClick={() => setAuthView("signup")}>Switch to Sign Up</button>
+              <button onClick={() => { setLoginPrefill(null); setAuthView("signup"); }}>Switch to Sign Up</button>
             </div>
           ) : (
-            <div>
+            <div key="signup">
               <h2>Sign Up</h2>
               <form onSubmit={(e) => {
                 e.preventDefault();
@@ -613,6 +621,7 @@ export default function App() {
                 .then(data => {
                   if (data.id) {
                     alert('Registration successful! Please login.');
+                    setLoginPrefill({ username: String(userData.username ?? "").trim(), password: String(userData.password ?? "") });
                     setAuthView("login");
                   } else {
                     alert('Registration failed: Invalid response from server');
@@ -628,13 +637,13 @@ export default function App() {
                   alert(friendly);
                 });
               }}>
-                <input name="full_name" placeholder="Full Name" required />
-                <input name="username" placeholder="Username" required />
-                <input name="email" type="email" placeholder="Email" required />
-                <input name="password" type="password" placeholder="Password" required />
+                <input name="full_name" placeholder="Full Name" type="text" autoComplete="name" required />
+                <input name="username" placeholder="Username" type="text" autoComplete="username" required />
+                <input name="email" type="email" placeholder="Email" autoComplete="email" required />
+                <input name="password" type="password" placeholder="Password" autoComplete="new-password" required />
                 <button type="submit">Sign Up</button>
               </form>
-              <button onClick={() => setAuthView("login")}>Switch to Login</button>
+              <button onClick={() => { setLoginPrefill(null); setAuthView("login"); }}>Switch to Login</button>
             </div>
           )}
         </div>
@@ -891,78 +900,76 @@ export default function App() {
           </div>
         )}
 
-        {/* Statistics Cards */}
-        {hasEnoughInterviews && (
-          <div className="stats-grid">
-            <div className="stat-card">
-              <h3>Total Interviews</h3>
-              <div className="stat-number">{stats.total_interviews || 0}</div>
-            </div>
-            <div className="stat-card">
-              <h3>Total Score</h3>
-              <div className="stat-number">{stats.total_score || 0}</div>
-            </div>
-            <div className="stat-card">
-              <h3>Behavioral Total</h3>
-              <div className="stat-number">{stats.total_behavioral_score || 0}</div>
-            </div>
-            <div className="stat-card">
-              <h3>Technical Total</h3>
-              <div className="stat-number">{stats.total_technical_score || 0}</div>
-            </div>
-            <div className="stat-card">
-              <h3>Average Score</h3>
-              <div className="stat-number">{stats.average_score || 0}%</div>
-            </div>
-            <div className="stat-card">
-              <h3>Best Score</h3>
-              <div className="stat-number">{stats.best_score || 0}%</div>
+        {/* Top scores: technical, behavioral, design */}
+        <div className="stats-grid stats-grid-top">
+          <div className="stat-card">
+            <h3>Most Recent Technical Score</h3>
+            <div className="stat-number">
+              {stats.most_recent_technical_score != null ? `${stats.most_recent_technical_score}%` : "—"}
             </div>
           </div>
-        )}
-
-        {hasEnoughInterviews && (
-          <div className="dashboard-highlights">
-            <div className="highlight-card">
-              <h3>Latest Interview</h3>
-              <p>
-                {stats.last_interview_at
-                  ? new Date(stats.last_interview_at).toLocaleString()
-                  : "No interviews yet"}
-              </p>
-            </div>
-            <div className="highlight-card">
-              <h3>Latest Role</h3>
-              <p>{stats.last_role || "—"}</p>
-            </div>
-            <div className="highlight-card">
-              <h3>Latest Company</h3>
-              <p>{stats.last_company || "—"}</p>
+          <div className="stat-card">
+            <h3>Average Technical Score</h3>
+            <div className="stat-number">{stats.technical_average != null ? `${stats.technical_average}%` : "—"}</div>
+          </div>
+          <div className="stat-card">
+            <h3>Most Recent Behavioral Score</h3>
+            <div className="stat-number">
+              {stats.most_recent_behavioral_score != null ? `${stats.most_recent_behavioral_score}%` : "—"}
             </div>
           </div>
-        )}
+          <div className="stat-card">
+            <h3>Average Behavioral Score</h3>
+            <div className="stat-number">{stats.behavioral_average != null ? `${stats.behavioral_average}%` : "—"}</div>
+          </div>
+          <div className="stat-card">
+            <h3>Most Recent Design Score</h3>
+            <div className="stat-number">
+              {stats.most_recent_design_score != null ? `${stats.most_recent_design_score}%` : "—"}
+            </div>
+          </div>
+          <div className="stat-card">
+            <h3>Average Design Score</h3>
+            <div className="stat-number">{stats.design_average != null ? `${stats.design_average}%` : "—"}</div>
+          </div>
+        </div>
 
-        {/* Strengths and Weaknesses */}
+        {/* Strengths and Weaknesses - unlocked at 5+ interviews */}
         {hasEnoughInterviews && (
           <div className="strengths-weaknesses">
             <div className="strengths">
               <h3>Strengths</h3>
               <ul>
                 {stats.strengths && stats.strengths.length > 0 ? (
-                  stats.strengths.map((strength, index) => (
-                    <li key={index}>{strength}</li>
+                  stats.strengths.map((item, index) => (
+                    <li key={index}>
+                      {typeof item === "object" && item !== null && "highlight" in item ? (
+                        <>
+                          <strong>{item.highlight}</strong>
+                          {item.feedback ? <div className="strength-feedback">{item.feedback}</div> : null}
+                        </>
+                      ) : (
+                        item
+                      )}
+                    </li>
                   ))
                 ) : (
                   <li>Complete more interviews to see your strengths</li>
                 )}
               </ul>
             </div>
-            <div className="weaknesses">
+            <div className="weaknesses areas-improvement-centered">
               <h3>Areas for Improvement</h3>
               <ul>
                 {stats.weaknesses && stats.weaknesses.length > 0 ? (
-                  stats.weaknesses.map((weakness, index) => (
-                    <li key={index}>{weakness}</li>
+                  stats.weaknesses.map((item, index) => (
+                    <li key={index}>
+                      {typeof item === "object" && item !== null && "feedback" in item ? (
+                        <div className="improvement-feedback">{item.feedback}</div>
+                      ) : (
+                        item
+                      )}
+                    </li>
                   ))
                 ) : (
                   <li>Complete more interviews to see areas for improvement</li>
@@ -972,7 +979,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Recent Interview History */}
+        {/* Recent Interview History - unlocked at 5+ interviews */}
         {hasEnoughInterviews && (
           <div className="history-section">
             <h3>Recent Interview History</h3>
@@ -995,7 +1002,7 @@ export default function App() {
                   <tbody>
                     {history.map((session) => (
                       <tr key={session.id}>
-                        <td>{new Date(session.created_at).toLocaleDateString()}</td>
+                        <td>{new Date(session.created_at).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit', year: '2-digit' })}</td>
                         <td className="type-cell">{session.type}</td>
                         <td className="role-cell">{session.role || "—"}</td>
                         <td className="company-cell">{session.company || "—"}</td>

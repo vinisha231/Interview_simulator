@@ -15,5 +15,6 @@ class InterviewSession(Base):
     user_answer = Column(Text)
     feedback = Column(Text)
     score = Column(Integer)
+    strength_highlight = Column(String(500), nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

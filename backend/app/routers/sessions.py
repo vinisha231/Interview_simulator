@@ -26,6 +26,7 @@ class SessionCreate(BaseModel):
     user_answer: Optional[str] = None
     feedback: Optional[str] = None
     score: Optional[int] = None
+    strength_highlight: Optional[str] = None
     notes: Optional[str] = None
 
 
@@ -45,6 +46,7 @@ def create_session(
         user_answer=session_data.user_answer,
         feedback=session_data.feedback,
         score=session_data.score,
+        strength_highlight=session_data.strength_highlight,
         notes=session_data.notes
     )
     db.add(new_session)
@@ -53,7 +55,16 @@ def create_session(
     return {"id": new_session.id, "message": "Session saved successfully"}
 
 
-@router.get("/", response_model=List[SessionCreate])
-def list_sessions(db: Session = Depends(get_db)):
-    sessions = db.query(InterviewSession).order_by(InterviewSession.created_at.desc()).all()
+@router.get("/")
+def list_sessions(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user)
+):
+    """List sessions for the current user only."""
+    sessions = (
+        db.query(InterviewSession)
+        .filter(InterviewSession.user_id == current_user.id)
+        .order_by(InterviewSession.created_at.desc())
+        .all()
+    )
     return sessions
