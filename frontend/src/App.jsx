@@ -34,6 +34,38 @@ export default function App() {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef(null);
 
+  // Timed interview state
+  const [showTimedSetup, setShowTimedSetup] = useState(false);
+  const [showTimedConfirmModal, setShowTimedConfirmModal] = useState(false);
+  const [timedSessionLengthPreset, setTimedSessionLengthPreset] = useState("15"); // "5"|"15"|"30"|"45"|"60"|"custom"
+  const [timedCustomHours, setTimedCustomHours] = useState(0);
+  const [timedCustomMinutes, setTimedCustomMinutes] = useState(15);
+  const [timingModel, setTimingModel] = useState("whole_and_per_question"); // "whole_only" | "whole_and_per_question"
+  const [timedSessionActive, setTimedSessionActive] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(null); // seconds left (null when not running)
+  const [timedQuestionIndex, setTimedQuestionIndex] = useState(0);
+  const [timedTimePerQuestion, setTimedTimePerQuestion] = useState([]); // seconds spent per question
+  const [timedQuestionStartAt, setTimedQuestionStartAt] = useState(null); // Date.now() when current question shown
+  const [timedResponses, setTimedResponses] = useState([]); // { question, userAnswer, feedback, score, timeSpentSeconds }
+  const [timedSessionSummary, setTimedSessionSummary] = useState(null); // set when session ends
+  const [timedSessionDurationSeconds, setTimedSessionDurationSeconds] = useState(null);
+  const timerIntervalRef = useRef(null);
+  const TIMED_QUESTIONS_COUNT = 5;
+  const [timedInterviewType, setTimedInterviewType] = useState("technical");
+  const timedStateRef = useRef({ userAnswer: "", currentQuestion: "", timedResponses: [], interviewType: null, role: "", company: "", difficulty: "", sessionNotes: "", timedSessionDurationSeconds: null, timedQuestionStartAt: null });
+  timedStateRef.current = {
+    userAnswer,
+    currentQuestion,
+    timedResponses,
+    interviewType,
+    role,
+    company,
+    difficulty,
+    sessionNotes,
+    timedSessionDurationSeconds,
+    timedQuestionStartAt,
+  };
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userData = localStorage.getItem("user");
@@ -519,6 +551,342 @@ export default function App() {
     }
   }, [currentView, user]);
 
+  // Compute timed session duration in seconds (for preset or custom)
+  const getTimedDurationSeconds = () => {
+    if (timedSessionLengthPreset === "custom") {
+      return timedCustomHours * 3600 + timedCustomMinutes * 60;
+    }
+    return parseInt(timedSessionLengthPreset || "15", 10) * 60;
+  };
+
+  // Timer interval: decrement every second; at 0 trigger time-up
+  useEffect(() => {
+    if (!timedSessionActive || timeRemaining === null || timeRemaining <= 0) {
+      return;
+    }
+    timerIntervalRef.current = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev == null || prev <= 1) {
+          if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = null;
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    };
+  }, [timedSessionActive]);
+
+  const timedTimeUpHandledRef = useRef(false);
+  // When time hits 0: auto-submit and end session (use refs for current values)
+  useEffect(() => {
+    if (!timedSessionActive || timeRemaining !== 0) return;
+    if (timedTimeUpHandledRef.current) return;
+    timedTimeUpHandledRef.current = true;
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    const ref = timedStateRef.current;
+    const answerToSubmit = (ref.userAnswer || "").trim();
+    const questionStart = ref.timedQuestionStartAt != null ? ref.timedQuestionStartAt : Date.now();
+    const timeSpentThisQuestion = Math.round((Date.now() - questionStart) / 1000);
+    (async () => {
+      let finalResponses = [...ref.timedResponses];
+      if (ref.currentQuestion && answerToSubmit) {
+        setIsLoading(true);
+        try {
+          const token = localStorage.getItem("token");
+          const evalRes = await fetch(apiUrl("/api/interview/evaluate"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              question: ref.currentQuestion,
+              user_answer: answerToSubmit,
+              interview_type: ref.interviewType,
+              role: (ref.role || "").trim(),
+              company: (ref.company || "").trim() || null,
+            }),
+          });
+          if (evalRes.ok) {
+            const data = await evalRes.json();
+            finalResponses = [
+              ...ref.timedResponses,
+              {
+                question: ref.currentQuestion,
+                userAnswer: answerToSubmit,
+                feedback: data.feedback,
+                score: data.score,
+                timeSpentSeconds: timeSpentThisQuestion,
+              },
+            ];
+            await fetch(apiUrl("/api/sessions/"), {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({
+                interview_type: ref.interviewType,
+                role: (ref.role || "").trim(),
+                company: (ref.company || "").trim() || null,
+                difficulty: ref.difficulty,
+                question: ref.currentQuestion,
+                user_answer: answerToSubmit,
+                feedback: data.feedback,
+                score: data.score,
+                strength_highlight: data.strength_highlight || null,
+                notes: (ref.sessionNotes || "").trim() || null,
+                time_spent_seconds: timeSpentThisQuestion,
+                session_total_seconds: ref.timedSessionDurationSeconds,
+              }),
+            });
+          } else {
+            finalResponses = [
+              ...ref.timedResponses,
+              {
+                question: ref.currentQuestion,
+                userAnswer: answerToSubmit,
+                feedback: "Time expired — not evaluated.",
+                score: null,
+                timeSpentSeconds: timeSpentThisQuestion,
+              },
+            ];
+          }
+        } catch (e) {
+          console.error(e);
+          finalResponses = [
+            ...ref.timedResponses,
+            {
+              question: ref.currentQuestion,
+              userAnswer: answerToSubmit,
+              feedback: "Time expired — error evaluating.",
+              score: null,
+              timeSpentSeconds: timeSpentThisQuestion,
+            },
+          ];
+        } finally {
+          setIsLoading(false);
+        }
+      }
+      const withScores = finalResponses.filter((r) => r.score != null);
+      const totalScore =
+        withScores.length > 0
+          ? Math.round(withScores.reduce((a, r) => a + (r.score ?? 0), 0) / withScores.length)
+          : null;
+      setTimedSessionSummary({
+        responses: finalResponses,
+        totalScore,
+        timeExpired: true,
+      });
+      setTimedSessionActive(false);
+      setTimeRemaining(null);
+    })();
+  }, [timedSessionActive, timeRemaining]);
+
+  // Warn on refresh or navigate away during timed session
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (timedSessionActive && timeRemaining != null) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [timedSessionActive, timeRemaining]);
+
+  const resetTimedSession = () => {
+    timedTimeUpHandledRef.current = false;
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    setShowTimedSetup(false);
+    setShowTimedConfirmModal(false);
+    setTimedSessionActive(false);
+    setTimeRemaining(null);
+    setTimedQuestionIndex(0);
+    setTimedTimePerQuestion([]);
+    setTimedQuestionStartAt(null);
+    setTimedResponses([]);
+    setTimedSessionSummary(null);
+    setTimedSessionDurationSeconds(null);
+  };
+
+  const startTimedInterviewAfterConfirm = async () => {
+    timedTimeUpHandledRef.current = false;
+    setShowTimedConfirmModal(false);
+    const duration = getTimedDurationSeconds();
+    setTimedSessionDurationSeconds(duration);
+    setTimedSessionActive(true);
+    setTimeRemaining(duration);
+    setTimedQuestionIndex(0);
+    setTimedResponses([]);
+    setTimedTimePerQuestion([]);
+    setUserAnswer("");
+    setFeedback("");
+    setScore(null);
+    setFollowupQuestion("");
+    setFollowupAnswer("");
+    setFollowupFeedback("");
+    setFollowupScore(null);
+    setTimedSessionSummary(null);
+    const type = timedInterviewType || "technical";
+    setInterviewType(type);
+    setCurrentQuestion(""); // so we show Loading until first question is set
+    if (!role.trim()) {
+      alert("Please enter a role first.");
+      resetTimedSession();
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const params = new URLSearchParams({
+        interview_type: type,
+        difficulty,
+        role: role.trim(),
+      });
+      if (company.trim()) params.set("company", company.trim());
+      if (type === "technical" && language) params.set("language", language);
+      const response = await fetch(apiUrl(`/api/interview/generate-question?${params.toString()}`), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        setCurrentQuestion(data.question);
+        setTimedQuestionStartAt(Date.now());
+      } else {
+        const msg = data?.detail;
+        const text = typeof msg === "string" ? msg : Array.isArray(msg) && msg[0]?.msg ? msg[0].msg : "Failed to generate question.";
+        alert("Failed to generate question: " + text);
+        resetTimedSession();
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error generating question. Check backend.");
+      resetTimedSession();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const submitTimedAnswer = async () => {
+    if (!userAnswer.trim()) {
+      alert("Please provide an answer before submitting.");
+      return;
+    }
+    const questionStart = timedQuestionStartAt != null ? timedQuestionStartAt : Date.now();
+    const timeSpentThisQuestion = Math.round((Date.now() - questionStart) / 1000);
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(apiUrl("/api/interview/evaluate"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          question: currentQuestion,
+          user_answer: userAnswer,
+          interview_type: interviewType,
+          role: role.trim(),
+          company: company.trim() || null,
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const newResponses = [
+          ...timedResponses,
+          {
+            question: currentQuestion,
+            userAnswer: userAnswer,
+            feedback: data.feedback,
+            score: data.score,
+            timeSpentSeconds: timeSpentThisQuestion,
+          },
+        ];
+        setTimedResponses(newResponses);
+        setTimedTimePerQuestion((prev) => [...prev, timeSpentThisQuestion]);
+        await fetch(apiUrl("/api/sessions/"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            interview_type: interviewType,
+            role: role.trim(),
+            company: company.trim() || null,
+            difficulty,
+            question: currentQuestion,
+            user_answer: userAnswer,
+            feedback: data.feedback,
+            score: data.score,
+            strength_highlight: data.strength_highlight || null,
+            notes: sessionNotes.trim() || null,
+            time_spent_seconds: timeSpentThisQuestion,
+            session_total_seconds: timedSessionDurationSeconds,
+          }),
+        });
+        const nextIndex = timedQuestionIndex + 1;
+        if (nextIndex >= TIMED_QUESTIONS_COUNT) {
+          if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = null;
+          }
+          const withScores = newResponses.filter((r) => r.score != null);
+          const totalScore =
+            withScores.length > 0
+              ? Math.round(withScores.reduce((a, r) => a + (r.score ?? 0), 0) / withScores.length)
+              : null;
+          setTimedSessionSummary({ responses: newResponses, totalScore, timeExpired: false });
+          setTimedSessionActive(false);
+          setTimeRemaining(null);
+        } else {
+          setTimedQuestionIndex(nextIndex);
+          setUserAnswer("");
+          setFeedback("");
+          setScore(null);
+          setTimedQuestionStartAt(Date.now());
+          const params = new URLSearchParams({
+            interview_type: interviewType,
+            difficulty,
+            role: role.trim(),
+          });
+          if (company.trim()) params.set("company", company.trim());
+          if (interviewType === "technical" && language) params.set("language", language);
+          const nextRes = await fetch(apiUrl(`/api/interview/generate-question?${params.toString()}`), {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const nextData = await nextRes.json().catch(() => ({}));
+          if (nextRes.ok && nextData.question) {
+            setCurrentQuestion(nextData.question);
+          } else {
+            setTimedSessionSummary({
+              responses: newResponses,
+              totalScore: newResponses.filter((r) => r.score != null).length
+                ? Math.round(
+                    newResponses.reduce((a, r) => a + (r.score ?? 0), 0) /
+                      newResponses.filter((r) => r.score != null).length
+                  )
+                : null,
+              timeExpired: false,
+            });
+            setTimedSessionActive(false);
+            setTimeRemaining(null);
+          }
+        }
+      } else {
+        alert("Failed to evaluate answer. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error evaluating answer:", error);
+      alert("Error evaluating answer. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (!user) {
     return (
       <div className="app">
@@ -652,13 +1020,128 @@ export default function App() {
   }
 
   const renderInterviewView = () => {
+    // Timed session summary (end screen)
+    if (timedSessionSummary) {
+      const { responses, totalScore, timeExpired } = timedSessionSummary;
+      return (
+        <div className="content timed-summary">
+          <h2>Timed Session Complete</h2>
+          {timeExpired && <p className="timed-summary-subtitle">Time ran out. Your last response was recorded.</p>}
+          <div className="timed-summary-score">
+            {totalScore != null ? (
+              <span>Overall score: <strong>{totalScore}%</strong></span>
+            ) : (
+              <span>Responses recorded (no score when time expired with no evaluation).</span>
+            )}
+          </div>
+          <div className="timed-summary-list">
+            <h3>Question breakdown</h3>
+            {responses.map((r, i) => (
+              <div key={i} className="timed-summary-item">
+                <div className="timed-summary-q">{r.question}</div>
+                <div className="timed-summary-meta">
+                  {r.score != null && <span className="timed-summary-score-pill">{r.score}%</span>}
+                  <span className="timed-summary-time">{r.timeSpentSeconds}s</span>
+                </div>
+                {r.feedback && <div className="timed-summary-feedback">{r.feedback}</div>}
+              </div>
+            ))}
+          </div>
+          <div className="timed-summary-actions">
+            <button onClick={() => { resetTimedSession(); resetInterview(); }} className="next-btn">Back to Interview</button>
+            <button onClick={() => { resetTimedSession(); resetInterview(); setCurrentView("dashboard"); fetchDashboardData(); }} className="submit-btn">View Dashboard</button>
+          </div>
+        </div>
+      );
+    }
+
+    // Timed setup screen (after clicking "Start Timed Interview")
+    if (showTimedSetup && !timedSessionActive && !timedSessionSummary) {
+      const durationSec = getTimedDurationSeconds();
+      const customValid = timedSessionLengthPreset !== "custom" || (timedCustomHours * 3600 + timedCustomMinutes * 60) > 0;
+      return (
+        <div className="content timed-setup">
+          <h2>Timed Interview Setup</h2>
+          <p>Set your session length and timing model. You will answer up to {TIMED_QUESTIONS_COUNT} questions.</p>
+          <div className="timed-setup-form">
+            <div className="timed-setup-row">
+              <label>Interview type</label>
+              <select
+                value={timedInterviewType}
+                onChange={(e) => setTimedInterviewType(e.target.value)}
+                data-timed-type
+              >
+                <option value="technical">Technical</option>
+                <option value="behavioral">Behavioral</option>
+                <option value="design">Design</option>
+              </select>
+            </div>
+            <div className="timed-setup-row">
+              <label>Session length</label>
+              <select
+                value={timedSessionLengthPreset}
+                onChange={(e) => setTimedSessionLengthPreset(e.target.value)}
+              >
+                <option value="5">5 minutes</option>
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="45">45 minutes</option>
+                <option value="60">1 hour</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            {timedSessionLengthPreset === "custom" && (
+              <div className="timed-setup-custom">
+                <label>Hours (0–2)</label>
+                <select
+                  value={timedCustomHours}
+                  onChange={(e) => setTimedCustomHours(Number(e.target.value))}
+                >
+                  {[0, 1, 2].map((h) => (
+                    <option key={h} value={h}>{h} hr</option>
+                  ))}
+                </select>
+                <label>Minutes (0–60)</label>
+                <select
+                  value={timedCustomMinutes}
+                  onChange={(e) => setTimedCustomMinutes(Number(e.target.value))}
+                >
+                  {Array.from({ length: 61 }, (_, i) => (
+                    <option key={i} value={i}>{i} min</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="timed-setup-row">
+              <label>Timing model</label>
+              <select value={timingModel} onChange={(e) => setTimingModel(e.target.value)}>
+                <option value="whole_only">Whole session countdown only</option>
+                <option value="whole_and_per_question">Per-question timer + whole session countdown</option>
+              </select>
+            </div>
+          </div>
+          <p className="timed-setup-duration">Total time: {Math.floor(durationSec / 60)}m {durationSec % 60}s</p>
+          <div className="timed-setup-actions">
+            <button onClick={() => setShowTimedSetup(false)} className="back-btn">Cancel</button>
+            <button
+              onClick={() => setShowTimedConfirmModal(true)}
+              disabled={!customValid}
+              className="interview-btn"
+            >
+              Start Timed Interview
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     if (!interviewType) {
       return (
         <div className="content">
           <h2>Interview Practice</h2>
           <p>Enter your role and choose an interview type to start practicing.</p>
 
-          {draft && (
+          {draft && !showTimedSetup && (
             <div className="resume-banner">
               <p>You have a saved interview in progress.</p>
               <div className="resume-actions">
@@ -735,6 +1218,14 @@ export default function App() {
             >
               {isLoading ? "Loading..." : "Design Interview"}
             </button>
+            <button
+              type="button"
+              className="interview-btn timed-mode-btn"
+              onClick={() => setShowTimedSetup(true)}
+              disabled={isLoading}
+            >
+              Start Timed Interview
+            </button>
           </div>
         </div>
       );
@@ -745,17 +1236,51 @@ export default function App() {
         <div className="content">
           <h2>Loading Question...</h2>
           <p>Please wait while we generate your {interviewType} interview question.</p>
-          <button onClick={resetInterview} className="back-btn">Stop Interview</button>
+          <button
+            onClick={() => {
+              if (timedSessionActive) resetTimedSession();
+              resetInterview();
+            }}
+            className="back-btn"
+          >
+            Stop Interview
+          </button>
         </div>
       );
     }
+
+    const timeExpired = timedSessionActive && timeRemaining !== null && timeRemaining <= 0;
+    const isTimedMode = timedSessionActive && !timedSessionSummary;
 
     return (
       <div className="content">
         <div className="interview-header">
           <h2>{interviewType.charAt(0).toUpperCase() + interviewType.slice(1)} Interview</h2>
-          <button onClick={resetInterview} className="back-btn">Stop Interview</button>
+          {isTimedMode && (
+            <div className={`timer-display ${timeRemaining !== null && timeRemaining <= 30 ? "timer-urgent" : ""}`}>
+              <span className="timer-label">Time left</span>
+              <span className="timer-value">
+                {timeRemaining != null
+                  ? `${Math.floor(timeRemaining / 60)}:${String(timeRemaining % 60).padStart(2, "0")}`
+                  : "—"}
+              </span>
+            </div>
+          )}
+          <button
+            onClick={() => {
+              if (isTimedMode) resetTimedSession();
+              resetInterview();
+            }}
+            className="back-btn"
+          >
+            Stop Interview
+          </button>
         </div>
+        {isTimedMode && (
+          <div className="progress-indicator">
+            Question {timedQuestionIndex + 1} of {TIMED_QUESTIONS_COUNT}
+          </div>
+        )}
         
         <div className="question-section">
           <h3>Question:</h3>
@@ -770,7 +1295,20 @@ export default function App() {
           </div>
         </div>
 
-        {!feedback && ( 
+        {isTimedMode ? (
+          <TechnicalInterviewBox
+            userAnswer={userAnswer}
+            setUserAnswer={setUserAnswer}
+            submitAnswer={submitTimedAnswer}
+            isListening={isListening}
+            setIsListening={setIsListening}
+            recognitionRef={recognitionRef}
+            isLoading={isLoading}
+            isTechnical={interviewType === "technical"}
+            programmingLanguage={language}
+            inputDisabled={timeExpired}
+          />
+        ) : !feedback && (
           <TechnicalInterviewBox
             userAnswer={userAnswer}
             setUserAnswer={setUserAnswer}
@@ -783,17 +1321,19 @@ export default function App() {
             programmingLanguage={language}
           />
         )}
-        <div className="answer-section session-notes-section">
-          <h3>Session Notes</h3>
-          <textarea
-            value={sessionNotes}
-            onChange={(e) => setSessionNotes(e.target.value)}
-            placeholder="Add notes about this interview..."
-            rows={4}
-            disabled={isLoading}
-          />
-        </div>
-        {feedback && (
+        {!isTimedMode && (
+          <div className="answer-section session-notes-section">
+            <h3>Session Notes</h3>
+            <textarea
+              value={sessionNotes}
+              onChange={(e) => setSessionNotes(e.target.value)}
+              placeholder="Add notes about this interview..."
+              rows={4}
+              disabled={isLoading}
+            />
+          </div>
+        )}
+        {!isTimedMode && feedback && (
           <div className="feedback-section">
             <h3>Feedback & Score:</h3>
             <div className="score-display">
@@ -1088,6 +1628,28 @@ export default function App() {
         
         {currentView === "interview" ? renderInterviewView() : renderDashboardView()}
       </div>
+
+      {showTimedConfirmModal && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="timed-confirm-title">
+          <div className="modal-content timed-confirm-modal">
+            <h2 id="timed-confirm-title">Timed Interview Rules</h2>
+            <ul>
+              <li>The session countdown starts when you begin.</li>
+              <li>When time runs out, your current answer will be auto-submitted and the session will end.</li>
+              <li>Input is locked once time expires; you cannot edit after that.</li>
+              <li>Refreshing or leaving the page during the session may lose progress.</li>
+              <li>You will answer up to {TIMED_QUESTIONS_COUNT} questions. A summary with scores will appear at the end.</li>
+            </ul>
+            <p className="timed-confirm-duration">
+              Duration: {Math.floor(getTimedDurationSeconds() / 60)}m {getTimedDurationSeconds() % 60}s
+            </p>
+            <div className="modal-actions">
+              <button onClick={() => setShowTimedConfirmModal(false)} className="back-btn">Cancel</button>
+              <button onClick={startTimedInterviewAfterConfirm} className="interview-btn">Begin</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

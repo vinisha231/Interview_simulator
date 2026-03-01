@@ -28,6 +28,8 @@ class SessionCreate(BaseModel):
     score: Optional[int] = None
     strength_highlight: Optional[str] = None
     notes: Optional[str] = None
+    time_spent_seconds: Optional[int] = None
+    session_total_seconds: Optional[int] = None
 
 
 @router.post("/")
@@ -47,7 +49,9 @@ def create_session(
         feedback=session_data.feedback,
         score=session_data.score,
         strength_highlight=session_data.strength_highlight,
-        notes=session_data.notes
+        notes=session_data.notes,
+        time_spent_seconds=session_data.time_spent_seconds,
+        session_total_seconds=session_data.session_total_seconds,
     )
     db.add(new_session)
     db.commit()

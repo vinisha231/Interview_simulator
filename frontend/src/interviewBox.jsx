@@ -23,7 +23,9 @@ export default function TechnicalInterviewBox({
   isLoading,
   isTechnical,
   programmingLanguage = "Python",
+  inputDisabled = false,
 }) {
+  const disabled = isLoading || inputDisabled;
   const solutionFileName = isTechnical
     ? `solution.${LANGUAGE_EXT[programmingLanguage] || "py"}`
     : null;
@@ -60,7 +62,7 @@ export default function TechnicalInterviewBox({
               onChange={(e) => setUserAnswer(e.target.value)}
               placeholder="// Write your answer here..."
               rows={14}
-              disabled={isLoading}
+              disabled={disabled}
             />
             <div className="ide-minimap">
               {Array.from({ length: Math.min(lineCount, 40) }, (_, index) => (
@@ -75,7 +77,7 @@ export default function TechnicalInterviewBox({
           onChange={(e) => setUserAnswer(e.target.value)}
           placeholder="Type your answer here..."
           rows={8}
-          disabled={isLoading}
+          disabled={disabled}
         />
       )}
       <div style={{ margin: '10px 0' }}>
@@ -86,7 +88,7 @@ export default function TechnicalInterviewBox({
               setIsListening(true);
             }
           }}
-          disabled={isListening || isLoading}
+          disabled={isListening || disabled}
           className="submit-btn"
         >
           {isListening ? "Listening..." : "Start Speaking"}
@@ -94,10 +96,10 @@ export default function TechnicalInterviewBox({
       </div>
       <button 
         onClick={submitAnswer}
-        disabled={isLoading || !userAnswer.trim()}
+        disabled={disabled || !userAnswer.trim()}
         className="submit-btn"
       >
-        {isLoading ? "Evaluating..." : "Submit Answer"}
+        {inputDisabled ? "Time's up" : isLoading ? "Evaluating..." : "Submit Answer"}
       </button>
     </div>
   );

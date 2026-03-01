@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from app.database import Base
 
+
 class InterviewSession(Base):
     __tablename__ = "interview_sessions"
 
@@ -18,3 +19,6 @@ class InterviewSession(Base):
     strength_highlight = Column(String(500), nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    # Timed session: time spent on this question (seconds); session_total_seconds = total session limit
+    time_spent_seconds = Column(Integer, nullable=True)
+    session_total_seconds = Column(Integer, nullable=True)

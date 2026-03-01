@@ -129,7 +129,9 @@ def get_history(
             "score": s.score,
             "feedback": s.feedback,
             "notes": s.notes,
-            "created_at": s.created_at
+            "created_at": s.created_at,
+            "time_spent_seconds": getattr(s, "time_spent_seconds", None),
+            "session_total_seconds": getattr(s, "session_total_seconds", None),
         }
         for s in sessions
     ]
