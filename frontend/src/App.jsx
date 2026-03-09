@@ -1477,17 +1477,17 @@ export default function App() {
         {/* Strengths and Weaknesses - unlocked at 5+ interviews */}
         {hasEnoughInterviews && (
           <div className="strengths-weaknesses">
-            <div className="strengths">
+            <div className="strengths strengths-left">
               <h3>Strengths</h3>
               <ul>
                 {stats.strengths && stats.strengths.length > 0 ? (
                   stats.strengths.map((item, index) => (
                     <li key={index}>
                       {typeof item === "object" && item !== null && "highlight" in item ? (
-                        <>
-                          <strong>{item.highlight}</strong>
-                          {item.feedback ? <div className="strength-feedback">{item.feedback}</div> : null}
-                        </>
+                        <div className="improvement-feedback">
+                          {item.highlight ? `${item.highlight}${item.feedback ? " " : ""}` : ""}
+                          {item.feedback || ""}
+                        </div>
                       ) : (
                         item
                       )}
