@@ -4,8 +4,6 @@ Database Connection - RDS PostgreSQL
 
 This module handles connection to AWS RDS PostgreSQL database.
 Provides database session management and initialization.
-
-Author: LLM Interview Simulator Team
 """
 
 from sqlalchemy import create_engine
@@ -41,12 +39,12 @@ SessionLocal = sessionmaker(
 def get_db() -> Generator[Session, None, None]:
     """
     Dependency to get database session.
-    
+
     Usage in FastAPI:
         @app.get("/items")
         def get_items(db: Session = Depends(get_db)):
             return db.query(Item).all()
-    
+
     Yields:
         Session: SQLAlchemy database session
     """
@@ -59,11 +57,12 @@ def get_db() -> Generator[Session, None, None]:
 
 def init_db():
     """Initialize database - create all tables."""
-    from .models import Base
-    
-    # Import all models so they're registered
-    from app.database import models
-    
+    from . import Base
+
+    # Import all models so they're registered with Base
+    from app.models.user import User  # noqa: F401
+    from app.models.session import InterviewSession  # noqa: F401
+
     # Create all tables
     Base.metadata.create_all(bind=engine)
     print("Database tables created successfully!")
@@ -71,8 +70,12 @@ def init_db():
 
 def reset_db():
     """Drop all tables and recreate them. Use with caution!"""
-    from .models import Base
-    
+    from . import Base
+
+    # Import all models so they're registered with Base
+    from app.models.user import User  # noqa: F401
+    from app.models.session import InterviewSession  # noqa: F401
+
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     print("Database reset completed!")
