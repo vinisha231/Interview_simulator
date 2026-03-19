@@ -99,3 +99,4 @@ validate_answers/plots/
 .elasticbeanstalk/*
 !.elasticbeanstalk/*.cfg.yml
 !.elasticbeanstalk/*.global.yml
+backend/zappa_settings.json
