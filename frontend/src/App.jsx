@@ -5,6 +5,40 @@ import TechnicalInterviewBox from './interviewBox';
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const apiUrl = (path) => `${API_BASE_URL}${path}`;
 
+function getStrengthItemText(item) {
+  if (typeof item === "string") return item;
+  if (item && typeof item === "object") {
+    const parts = [item.highlight, item.feedback].filter(Boolean);
+    return parts.join(" ").trim();
+  }
+  return "";
+}
+
+function getWeaknessItemText(item) {
+  if (typeof item === "string") return item;
+  if (item && typeof item === "object" && "feedback" in item) return (item.feedback || "").trim();
+  return "";
+}
+
+// ~3 lines at typical line length; used when text has no newlines (e.g. long paragraphs)
+const PREVIEW_MAX_CHARS = 220;
+
+function getFirst3Lines(str) {
+  if (str == null || str === "") return "";
+  const s = String(str).trim();
+  const lines = s.split(/\r?\n/);
+  const first3 = lines.slice(0, 3).join("\n");
+  if (first3.length <= PREVIEW_MAX_CHARS) return first3;
+  return s.slice(0, PREVIEW_MAX_CHARS) + "...";
+}
+
+function hasMoreThan3Lines(str) {
+  if (str == null || str === "") return false;
+  const s = String(str).trim();
+  const lines = s.split(/\r?\n/);
+  return lines.length > 3 || s.length > PREVIEW_MAX_CHARS;
+}
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [authView, setAuthView] = useState("login");
@@ -24,6 +58,7 @@ export default function App() {
   const [followupFeedback, setFollowupFeedback] = useState("");
   const [followupScore, setFollowupScore] = useState(null);
   const [sessionNotes, setSessionNotes] = useState("");
+  const [followUpSessionNotes, setFollowUpSessionNotes] = useState("");
   const [draft, setDraft] = useState(null);
   const [feedback, setFeedback] = useState("");
   const [score, setScore] = useState(null);
@@ -31,6 +66,15 @@ export default function App() {
   const [dashboardData, setDashboardData] = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState("");
+  const [recentSessionsPreview, setRecentSessionsPreview] = useState([]);
+  const [recentSessionsLoading, setRecentSessionsLoading] = useState(false);
+  const [recentSessionsError, setRecentSessionsError] = useState("");
+  const [showFullStrengths, setShowFullStrengths] = useState(false);
+  const [showFullWeaknesses, setShowFullWeaknesses] = useState(false);
+  const [expandedStrengthIndices, setExpandedStrengthIndices] = useState({});
+  const [expandedWeaknessIndices, setExpandedWeaknessIndices] = useState({});
+  const [expandedHistoryCell, setExpandedHistoryCell] = useState(null);
+  const [showFullInterviewHistory, setShowFullInterviewHistory] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef(null);
 
@@ -139,6 +183,7 @@ export default function App() {
       followupFeedback,
       followupScore,
       sessionNotes,
+      followUpSessionNotes,
       feedback,
       score
     };
@@ -157,6 +202,7 @@ export default function App() {
     followupFeedback,
     followupScore,
     sessionNotes,
+    followUpSessionNotes,
     feedback,
     score
   ]);
@@ -182,6 +228,7 @@ export default function App() {
     setFollowupFeedback("");
     setFollowupScore(null);
     setSessionNotes("");
+    setFollowUpSessionNotes("");
     setFeedback("");
     setScore(null);
     setDashboardData(null);
@@ -199,6 +246,7 @@ export default function App() {
     setFollowupFeedback("");
     setFollowupScore(null);
     setSessionNotes("");
+    setFollowUpSessionNotes("");
     setFeedback("");
     setScore(null);
     localStorage.removeItem("interviewDraft");
@@ -220,6 +268,7 @@ export default function App() {
     setFollowupFeedback(draft.followupFeedback || "");
     setFollowupScore(draft.followupScore ?? null);
     setSessionNotes(draft.sessionNotes || "");
+    setFollowUpSessionNotes(draft.followUpSessionNotes || "");
     setFeedback(draft.feedback || "");
     setScore(draft.score ?? null);
     setDraft(null);
@@ -371,9 +420,6 @@ export default function App() {
   };
 
   const nextQuestion = async () => {
-    const lastEntry = conversation[conversation.length - 1];
-    const lastQuestion = lastEntry?.question || currentQuestion;
-    const lastAnswer = lastEntry?.answer || userAnswer;
     setIsLoading(true);
     setFeedback("");
     setScore(null);
@@ -381,40 +427,22 @@ export default function App() {
     setFollowupAnswer("");
     setFollowupFeedback("");
     setFollowupScore(null);
+    setFollowUpSessionNotes("");
     
     try {
       const token = localStorage.getItem("token");
-      let response;
-      if (interviewType === "behavioral") {
-        response = await fetch(apiUrl("/api/interview/followup"), {
-          method: "POST",
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            question: lastQuestion,
-            user_answer: lastAnswer,
-            interview_type: interviewType,
-            role: role.trim(),
-            company: company.trim() || null,
-            history: conversation
-          })
-        });
-      } else {
-        const params = new URLSearchParams({
-          interview_type: interviewType,
-          difficulty,
-          role: role.trim()
-        });
-        if (company.trim()) params.set("company", company.trim());
-        if (interviewType === "technical" && language) params.set("language", language);
-        response = await fetch(apiUrl(`/api/interview/generate-question?${params.toString()}`), {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-      }
+      const params = new URLSearchParams({
+        interview_type: interviewType,
+        difficulty,
+        role: role.trim()
+      });
+      if (company.trim()) params.set("company", company.trim());
+      if (interviewType === "technical" && language) params.set("language", language);
+      const response = await fetch(apiUrl(`/api/interview/generate-question?${params.toString()}`), {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
       if (response.ok) {
         const data = await response.json();
@@ -480,7 +508,7 @@ export default function App() {
             feedback: data.feedback,
             score: data.score,
             strength_highlight: data.strength_highlight || null,
-            notes: sessionNotes.trim() || null
+            notes: (followUpSessionNotes || sessionNotes || "").trim() || null
           })
         });
       } else {
@@ -528,11 +556,30 @@ export default function App() {
       if (statsResponse.ok && historyResponse.ok) {
         const stats = await statsResponse.json();
         const history = await historyResponse.json();
-        
-        setDashboardData({
-          stats,
-          history
-        });
+        setDashboardData({ stats, history, strengthThemes: [], weaknessThemes: [] });
+
+        const strengthTexts = (stats.strengths || []).map(getStrengthItemText).filter(Boolean);
+        const weaknessTexts = (stats.weaknesses || []).map(getWeaknessItemText).filter(Boolean);
+        const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+        const themeFetches = [];
+        if (strengthTexts.length > 0) {
+          themeFetches.push(
+            fetch(apiUrl("/api/dashboard/themes"), { method: "POST", headers, body: JSON.stringify({ texts: strengthTexts, kind: "strengths" }) })
+              .then((r) => r.json())
+              .then((d) => d.themes || [])
+              .catch(() => [])
+          );
+        } else themeFetches.push(Promise.resolve([]));
+        if (weaknessTexts.length > 0) {
+          themeFetches.push(
+            fetch(apiUrl("/api/dashboard/themes"), { method: "POST", headers, body: JSON.stringify({ texts: weaknessTexts, kind: "weaknesses" }) })
+              .then((r) => r.json())
+              .then((d) => d.themes || [])
+              .catch(() => [])
+          );
+        } else themeFetches.push(Promise.resolve([]));
+        const [strengthThemes, weaknessThemes] = await Promise.all(themeFetches);
+        setDashboardData((prev) => (prev ? { ...prev, strengthThemes, weaknessThemes } : prev));
       } else {
         setDashboardError("Failed to fetch dashboard data.");
         console.error("Failed to fetch dashboard data");
@@ -545,11 +592,47 @@ export default function App() {
     }
   };
 
+  const fetchRecentSessionsPreview = async () => {
+    setRecentSessionsLoading(true);
+    setRecentSessionsError("");
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setRecentSessionsPreview([]);
+        return;
+      }
+
+      // Backend returns most recent sessions (max 20). We only show the last 3.
+      const res = await fetch(apiUrl("/api/dashboard/history"), {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error("Failed to load recent sessions");
+
+      const history = await res.json();
+      const recent = Array.isArray(history) ? history.slice(0, 3) : [];
+      setRecentSessionsPreview(recent);
+    } catch (e) {
+      setRecentSessionsError(e.message || "Could not load recent sessions");
+      setRecentSessionsPreview([]);
+    } finally {
+      setRecentSessionsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (currentView === "dashboard" && user) {
       fetchDashboardData();
     }
   }, [currentView, user]);
+
+  useEffect(() => {
+    // Show the preview only on the interview welcome screen (no interview started yet)
+    if (!user || currentView !== "interview" || interviewType) return;
+    fetchRecentSessionsPreview();
+  }, [currentView, user, interviewType]);
 
   // Compute timed session duration in seconds (for preset or custom)
   const getTimedDurationSeconds = () => {
@@ -1227,6 +1310,60 @@ export default function App() {
               Start Timed Interview
             </button>
           </div>
+
+          <div className="recent-sessions-preview">
+            <div className="recent-sessions-header">
+              <h3>Recent Sessions</h3>
+              <span className="recent-sessions-subtitle">Last 3</span>
+            </div>
+
+            {recentSessionsLoading ? (
+              <p className="recent-sessions-loading">Loading recent sessions...</p>
+            ) : recentSessionsError ? (
+              <p className="recent-sessions-error">{recentSessionsError}</p>
+            ) : recentSessionsPreview.length === 0 ? (
+              <p className="recent-sessions-empty">No sessions yet. Start an interview above!</p>
+            ) : (
+              <div className="recent-sessions-list">
+                {recentSessionsPreview.map((s) => (
+                  <div className="recent-session-item" key={s.id}>
+                    <div className="recent-session-row">
+                      <span className="recent-session-type">{s.type}</span>
+                      <span
+                        className={`recent-session-score ${
+                          s.score == null
+                            ? ""
+                            : Number(s.score) >= 70
+                              ? "good"
+                              : Number(s.score) >= 50
+                                ? "medium"
+                                : "poor"
+                        }`}
+                      >
+                        {s.score == null ? "—" : `${s.score}%`}
+                      </span>
+                    </div>
+                    <div className="recent-session-meta">
+                      <span className="recent-session-role">{s.role || "—"}</span>
+                      {s.company ? <span className="recent-session-company"> • {s.company}</span> : null}
+                      <span className="recent-session-date">
+                        {" "}
+                        • {s.created_at ? new Date(s.created_at).toLocaleDateString(undefined, { year: "2-digit", month: "short", day: "2-digit" }) : "—"}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="recent-sessions-view-more"
+              onClick={() => setCurrentView("dashboard")}
+            >
+              View more in Dashboard
+            </button>
+          </div>
         </div>
       );
     }
@@ -1308,7 +1445,7 @@ export default function App() {
             programmingLanguage={language}
             inputDisabled={timeExpired}
           />
-        ) : !feedback && (
+        ) : !feedback ? (
           <TechnicalInterviewBox
             userAnswer={userAnswer}
             setUserAnswer={setUserAnswer}
@@ -1320,6 +1457,13 @@ export default function App() {
             isTechnical={interviewType === "technical"}
             programmingLanguage={language}
           />
+        ) : (
+          <div className={`answer-section ${interviewType === "technical" ? "ide-answer" : ""}`}>
+            <h3>Your Answer:</h3>
+            <div className="answer-readonly">
+              <pre>{userAnswer || "(No answer)"}</pre>
+            </div>
+          </div>
         )}
         {!isTimedMode && (
           <div className="answer-section session-notes-section">
@@ -1358,6 +1502,16 @@ export default function App() {
                   rows={6}
                   disabled={isLoading}
                 />
+                <div className="session-notes-section followup-notes">
+                  <h4>Session Notes (for follow-up)</h4>
+                  <textarea
+                    value={followUpSessionNotes}
+                    onChange={(e) => setFollowUpSessionNotes(e.target.value)}
+                    placeholder="Add notes about this follow-up..."
+                    rows={3}
+                    disabled={isLoading}
+                  />
+                </div>
                 <button
                   onClick={submitFollowupAnswer}
                   disabled={isLoading || !followupAnswer.trim()}
@@ -1475,55 +1629,157 @@ export default function App() {
         </div>
 
         {/* Strengths and Weaknesses - unlocked at 5+ interviews */}
-        {hasEnoughInterviews && (
-          <div className="strengths-weaknesses">
-            <div className="strengths strengths-left">
-              <h3>Strengths</h3>
-              <ul>
-                {stats.strengths && stats.strengths.length > 0 ? (
-                  stats.strengths.map((item, index) => (
-                    <li key={index}>
-                      {typeof item === "object" && item !== null && "highlight" in item ? (
-                        <div className="improvement-feedback">
-                          {item.highlight ? `${item.highlight}${item.feedback ? " " : ""}` : ""}
-                          {item.feedback || ""}
-                        </div>
-                      ) : (
-                        item
-                      )}
-                    </li>
-                  ))
-                ) : (
-                  <li>Complete more interviews to see your strengths</li>
-                )}
-              </ul>
+        {hasEnoughInterviews && (() => {
+          const strengthsList = stats.strengths || [];
+          const weaknessesList = stats.weaknesses || [];
+          const TOP_N = 5;
+          const strengthsToShow = showFullStrengths ? strengthsList : strengthsList.slice(0, TOP_N);
+          const weaknessesToShow = showFullWeaknesses ? weaknessesList : weaknessesList.slice(0, TOP_N);
+          const strengthsHasMore = strengthsList.length > TOP_N;
+          const weaknessesHasMore = weaknessesList.length > TOP_N;
+          const strengthThemes = dashboardData.strengthThemes || [];
+          const weaknessThemes = dashboardData.weaknessThemes || [];
+          const hasExpandedStrength = Object.values(expandedStrengthIndices).some(Boolean);
+          const hasExpandedWeakness = Object.values(expandedWeaknessIndices).some(Boolean);
+          return (
+            <div className="strengths-weaknesses">
+              <div className="sw-headers">
+                <h3 className="sw-title-strengths">Strengths</h3>
+                <h3 className="sw-title-weaknesses">Areas for Improvement</h3>
+              </div>
+              <div className="sw-content">
+                <div className="strengths strengths-left">
+                  {strengthThemes.length > 0 && (
+                    <p className="common-words-subtitle">{strengthThemes.join(", ")}</p>
+                  )}
+                  <ul>
+                    {strengthsList.length > 0 ? (
+                      strengthsToShow.map((item, index) => {
+                        const fullText = typeof item === "object" && item !== null && "highlight" in item
+                          ? `${item.highlight || ""}${item.feedback ? " " + item.feedback : ""}`.trim()
+                          : String(item || "");
+                        const expanded = expandedStrengthIndices[index];
+                        const showExpand = hasMoreThan3Lines(fullText);
+                        const displayText = expanded || !showExpand ? fullText : getFirst3Lines(fullText);
+                        return (
+                          <li
+                            key={index}
+                            className={showExpand ? "expandable-item" : ""}
+                            onClick={() => showExpand && setExpandedStrengthIndices((prev) => ({ ...prev, [index]: !prev[index] }))}
+                            role={showExpand ? "button" : undefined}
+                            tabIndex={showExpand ? 0 : undefined}
+                            onKeyDown={(e) => showExpand && (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setExpandedStrengthIndices((prev) => ({ ...prev, [index]: !prev[index] })))}
+                          >
+                            <div className="improvement-feedback">
+                              {displayText}
+                              {showExpand && !expanded && <span className="expand-hint"> — Click to show full</span>}
+                              {showExpand && expanded && <span className="expand-hint"> — Click to reduce</span>}
+                            </div>
+                          </li>
+                        );
+                      })
+                    ) : (
+                      <li>Complete more interviews to see your strengths</li>
+                    )}
+                  </ul>
+                  <div className="sw-actions">
+                    {strengthsHasMore && (
+                      <button
+                        type="button"
+                        className="expand-list-btn"
+                        onClick={() => setShowFullStrengths((s) => !s)}
+                      >
+                        {showFullStrengths ? "Reduce" : "Show full list"}
+                      </button>
+                    )}
+                    {hasExpandedStrength && (
+                      <button
+                        type="button"
+                        className="expand-list-btn reduce-preview-btn"
+                        onClick={() => setExpandedStrengthIndices({})}
+                      >
+                        Reduce preview
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="weaknesses areas-improvement-centered">
+                  {weaknessThemes.length > 0 && (
+                    <p className="common-words-subtitle">{weaknessThemes.join(", ")}</p>
+                  )}
+                  <ul>
+                    {weaknessesList.length > 0 ? (
+                      weaknessesToShow.map((item, index) => {
+                        const fullText = typeof item === "object" && item !== null && "feedback" in item
+                          ? (item.feedback || "")
+                          : String(item || "");
+                        const expanded = expandedWeaknessIndices[index];
+                        const showExpand = hasMoreThan3Lines(fullText);
+                        const displayText = expanded || !showExpand ? fullText : getFirst3Lines(fullText);
+                        return (
+                          <li
+                            key={index}
+                            className={showExpand ? "expandable-item" : ""}
+                            onClick={() => showExpand && setExpandedWeaknessIndices((prev) => ({ ...prev, [index]: !prev[index] }))}
+                            role={showExpand ? "button" : undefined}
+                            tabIndex={showExpand ? 0 : undefined}
+                            onKeyDown={(e) => showExpand && (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setExpandedWeaknessIndices((prev) => ({ ...prev, [index]: !prev[index] })))}
+                          >
+                            <div className="improvement-feedback">
+                              {displayText}
+                              {showExpand && !expanded && <span className="expand-hint"> — Click to show full</span>}
+                              {showExpand && expanded && <span className="expand-hint"> — Click to reduce</span>}
+                            </div>
+                          </li>
+                        );
+                      })
+                    ) : (
+                      <li>Complete more interviews to see areas for improvement</li>
+                    )}
+                  </ul>
+                  <div className="sw-actions">
+                    {weaknessesHasMore && (
+                      <button
+                        type="button"
+                        className="expand-list-btn"
+                        onClick={() => setShowFullWeaknesses((s) => !s)}
+                      >
+                        {showFullWeaknesses ? "Reduce" : "Show full list"}
+                      </button>
+                    )}
+                    {hasExpandedWeakness && (
+                      <button
+                        type="button"
+                        className="expand-list-btn reduce-preview-btn"
+                        onClick={() => setExpandedWeaknessIndices({})}
+                      >
+                        Reduce preview
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="weaknesses areas-improvement-centered">
-              <h3>Areas for Improvement</h3>
-              <ul>
-                {stats.weaknesses && stats.weaknesses.length > 0 ? (
-                  stats.weaknesses.map((item, index) => (
-                    <li key={index}>
-                      {typeof item === "object" && item !== null && "feedback" in item ? (
-                        <div className="improvement-feedback">{item.feedback}</div>
-                      ) : (
-                        item
-                      )}
-                    </li>
-                  ))
-                ) : (
-                  <li>Complete more interviews to see areas for improvement</li>
-                )}
-              </ul>
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Recent Interview History - unlocked at 5+ interviews */}
         {hasEnoughInterviews && (
           <div className="history-section">
-            <h3>Recent Interview History</h3>
+            <div className="history-section-header">
+              <h3>Recent Interview History</h3>
+              {expandedHistoryCell && (
+                <button
+                  type="button"
+                  className="expand-list-btn reduce-preview-btn"
+                  onClick={() => setExpandedHistoryCell(null)}
+                >
+                  Reduce previews
+                </button>
+              )}
+            </div>
             {history && history.length > 0 ? (
+              <>
               <div className="history-table-container">
                 <table className="history-table">
                   <thead>
@@ -1540,46 +1796,63 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {history.map((session) => (
-                      <tr key={session.id}>
-                        <td>{new Date(session.created_at).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit', year: '2-digit' })}</td>
-                        <td className="type-cell">{session.type}</td>
-                        <td className="role-cell">{session.role || "—"}</td>
-                        <td className="company-cell">{session.company || "—"}</td>
-                        <td className="question-cell">{session.question}</td>
-                        <td className="answer-cell">{session.user_answer || "No answer provided"}</td>
-                        <td className={`score-cell ${session.score >= 70 ? 'good' : session.score >= 50 ? 'medium' : 'poor'}`}>
-                          {session.score}%
-                        </td>
-                        <td className="feedback-cell">
-                          {session.feedback ? (
-                            <div className="feedback-preview">
-                              {session.feedback.length > 100 
-                                ? `${session.feedback.substring(0, 100)}...` 
-                                : session.feedback
-                              }
-                            </div>
-                          ) : (
-                            <span className="no-feedback">No feedback</span>
-                          )}
-                        </td>
-                        <td className="notes-cell">
-                          {session.notes ? (
-                            <div className="notes-preview">
-                              {session.notes.length > 80
-                                ? `${session.notes.substring(0, 80)}...`
-                                : session.notes
-                              }
-                            </div>
-                          ) : (
-                            <span className="no-feedback">No notes</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {(showFullInterviewHistory ? history : history.slice(0, 10)).map((session) => {
+                      const qKey = `${session.id}-question`;
+                      const aKey = `${session.id}-answer`;
+                      const fKey = `${session.id}-feedback`;
+                      const nKey = `${session.id}-notes`;
+                      const questionText = session.question || "";
+                      const answerText = session.user_answer || "No answer provided";
+                      const feedbackText = session.feedback || "";
+                      const notesText = session.notes || "";
+                      const expandableCell = (key, fullText, emptyLabel) => {
+                        const expanded = expandedHistoryCell === key;
+                        const hasMore = hasMoreThan3Lines(fullText);
+                        const display = expanded || !hasMore ? fullText : getFirst3Lines(fullText);
+                        if (!fullText.trim()) return <span className="no-feedback">{emptyLabel}</span>;
+                        return (
+                          <div
+                            className={`history-cell-content ${hasMore ? "expandable-cell" : ""}`}
+                            onClick={() => hasMore && setExpandedHistoryCell(expanded ? null : key)}
+                            role={hasMore ? "button" : undefined}
+                            tabIndex={hasMore ? 0 : undefined}
+                            onKeyDown={(e) => hasMore && (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setExpandedHistoryCell(expanded ? null : key))}
+                          >
+                            <span className="cell-text">{display}</span>
+                            {hasMore && !expanded && <span className="expand-hint"> — Click to show full</span>}
+                            {hasMore && expanded && <span className="expand-hint"> — Click to reduce</span>}
+                          </div>
+                        );
+                      };
+                      return (
+                        <tr key={session.id}>
+                          <td>{new Date(session.created_at).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit', year: '2-digit' })}</td>
+                          <td className="type-cell">{session.type}</td>
+                          <td className="role-cell">{session.role || "—"}</td>
+                          <td className="company-cell">{session.company || "—"}</td>
+                          <td className="question-cell">{expandableCell(qKey, questionText, "—")}</td>
+                          <td className="answer-cell">{expandableCell(aKey, answerText, "No answer provided")}</td>
+                          <td className={`score-cell ${session.score >= 70 ? 'good' : session.score >= 50 ? 'medium' : 'poor'}`}>
+                            {session.score}%
+                          </td>
+                          <td className="feedback-cell">{expandableCell(fKey, feedbackText, "No feedback")}</td>
+                          <td className="notes-cell">{expandableCell(nKey, notesText, "No notes")}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
+              {history.length > 10 && (
+                <button
+                  type="button"
+                  className="expand-list-btn history-toggle-btn"
+                  onClick={() => setShowFullInterviewHistory((s) => !s)}
+                >
+                  {showFullInterviewHistory ? "Reduce" : "Show full interview history"}
+                </button>
+              )}
+              </>
             ) : (
               <div className="no-history">
                 <p>No interview history yet. Start practicing to see your progress!</p>
@@ -1626,7 +1899,8 @@ export default function App() {
           <button onClick={handleLogout}>Logout</button>
         </div>
         
-        {currentView === "interview" ? renderInterviewView() : renderDashboardView()}
+        {currentView === "interview" && renderInterviewView()}
+        {currentView === "dashboard" && renderDashboardView()}
       </div>
 
       {showTimedConfirmModal && (

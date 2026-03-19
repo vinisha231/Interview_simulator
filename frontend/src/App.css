@@ -241,6 +241,31 @@ button:hover {
   line-height: 1.6;
 }
 
+.answer-readonly {
+  background: var(--box-bg);
+  border: 2px solid var(--box-border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 10px 0;
+}
+
+.answer-readonly pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.followup-notes {
+  margin-top: 12px;
+}
+
+.followup-notes h4 {
+  margin-bottom: 6px;
+}
+
 p {
   line-height: 1.7;
 }
@@ -390,10 +415,34 @@ textarea:disabled {
 }
 
 .strengths-weaknesses {
+  margin: 30px 0;
+}
+
+.sw-headers {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 30px;
-  margin: 30px 0;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.sw-title-strengths {
+  color: #28a745;
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.sw-title-weaknesses {
+  color: #dc3545;
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.sw-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  align-items: start;
 }
 
 .strengths, .weaknesses {
@@ -403,24 +452,34 @@ textarea:disabled {
   border-radius: 12px;
   padding: 20px;
   text-align: left;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
 }
 
-.strengths h3 {
-  color: #28a745;
-  margin: 0 0 15px 0;
+.sw-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
 }
 
-.weaknesses h3 {
-  color: #dc3545;
-  margin: 0 0 15px 0;
+.reduce-preview-btn {
+  font-size: 12px;
+  padding: 6px 12px;
 }
 
-/* Left-align strength section to match weaknesses */
+.common-words-subtitle {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 12px 0;
+  line-height: 1.4;
+}
+
 .strengths-left {
   text-align: left;
 }
 
-/* Areas for Improvement: content left-aligned */
 .areas-improvement-centered {
   text-align: left;
 }
@@ -429,6 +488,7 @@ textarea:disabled {
   list-style: none;
   padding: 0;
   margin: 0;
+  flex: 1;
 }
 
 .strengths li, .weaknesses li {
@@ -439,6 +499,58 @@ textarea:disabled {
 
 .strengths li:last-child, .weaknesses li:last-child {
   border-bottom: none;
+}
+
+.expand-list-btn {
+  margin-top: 12px;
+  padding: 8px 14px;
+  font-size: 13px;
+  background: var(--box-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--accent);
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.expand-list-btn:hover {
+  background: var(--border);
+}
+
+.expand-hint {
+  font-size: 11px;
+  color: var(--accent);
+  font-style: italic;
+}
+
+.strengths li.expandable-item,
+.weaknesses li.expandable-item {
+  cursor: pointer;
+}
+
+.strengths li.expandable-item:hover,
+.weaknesses li.expandable-item:hover {
+  background: var(--box-bg);
+}
+
+.history-cell-content {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.history-cell-content.expandable-cell {
+  cursor: pointer;
+}
+
+.history-cell-content.expandable-cell:hover {
+  color: var(--card-text);
+}
+
+.history-cell-content .cell-text {
+  display: block;
 }
 
 .strength-feedback,
@@ -452,6 +564,22 @@ textarea:disabled {
 
 .history-section {
   margin: 30px 0;
+}
+
+.history-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.history-section-header h3 {
+  margin: 0;
+}
+
+.history-toggle-btn {
+  margin-top: 12px;
 }
 
 .history-table-container {
@@ -483,6 +611,157 @@ textarea:disabled {
 
 .history-table tr:hover {
   background: var(--box-bg);
+}
+
+/* Users admin table */
+.users-admin-view {
+  text-align: left;
+}
+.users-admin-view h2 {
+  margin-bottom: 12px;
+}
+.users-count {
+  margin-bottom: 16px;
+  font-size: 1rem;
+}
+.users-admin-view .table-wrap {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  margin-bottom: 16px;
+}
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--table-bg);
+}
+.users-table th {
+  background: var(--table-header);
+  color: white;
+  padding: 12px 10px;
+  text-align: left;
+  font-weight: bold;
+  font-size: 14px;
+}
+.users-table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.users-table tr:hover {
+  background: var(--box-bg);
+}
+.users-admin-view .refresh-btn {
+  margin-top: 0;
+}
+
+/* Recent Sessions preview (welcome page) */
+.recent-sessions-preview {
+  margin-top: 22px;
+  background: var(--box-bg);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: left;
+}
+
+.recent-sessions-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.recent-sessions-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.recent-sessions-subtitle {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.recent-sessions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recent-session-item {
+  border: 1px solid var(--border);
+  background: var(--table-bg);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.recent-session-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.recent-session-type {
+  font-weight: bold;
+  text-transform: capitalize;
+  color: var(--card-text);
+}
+
+.recent-session-score {
+  font-weight: bold;
+}
+
+.recent-session-score.good {
+  color: #28a745;
+}
+
+.recent-session-score.medium {
+  color: #ffc107;
+}
+
+.recent-session-score.poor {
+  color: #dc3545;
+}
+
+.recent-session-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.recent-session-role {
+  color: var(--card-text);
+  font-weight: 500;
+}
+
+.recent-sessions-view-more {
+  margin-top: 14px;
+  width: 100%;
+  max-width: 360px;
+  background: #17a2b8;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.recent-sessions-view-more:hover {
+  background: #138496;
+}
+
+.recent-sessions-loading,
+.recent-sessions-error,
+.recent-sessions-empty {
+  margin: 8px 0 0;
+  color: var(--muted);
 }
 
 .type-cell {
@@ -756,7 +1035,8 @@ textarea:disabled {
     grid-template-columns: repeat(2, 1fr);
   }
   
-  .strengths-weaknesses {
+  .sw-headers,
+  .sw-content {
     grid-template-columns: 1fr;
   }
   

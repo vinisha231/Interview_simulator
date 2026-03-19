@@ -239,9 +239,16 @@ def get_current_user_info(current_user: User = Depends(get_current_active_user))
     return current_user
 
 
+@router.get("/users/count")
+def get_users_count(db: Session = Depends(get_db)):
+    """Return total number of registered users (for admin/dashboard)."""
+    total = db.query(func.count(User.id)).scalar() or 0
+    return {"total": total}
+
+
 @router.get("/users", response_model=list[UserResponse])
 def list_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    """List all users (for admin/testing)."""
+    """List all users with safe info: id, username, email, full_name, is_active, created_at (for admin/testing). Passwords are never returned."""
     users = db.query(User).offset(skip).limit(limit).all()
     return users
 
