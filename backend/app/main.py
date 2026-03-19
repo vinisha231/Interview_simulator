@@ -22,6 +22,7 @@ from app.routers import interview, sessions, dashboard, auth  # Import all route
 import os  # For environment variables
 from dotenv import load_dotenv  # For loading .env files
 import uvicorn  # ASGI server for running FastAPI
+from mangum import Mangum  # AWS Lambda adapter for ASGI apps
 
 # Load .env from backend root so it works regardless of current working directory
 from pathlib import Path
@@ -104,3 +105,6 @@ if __name__ == "__main__":
     # host="0.0.0.0" means the server accepts connections from any IP address
     # This is required for Azure deployment
     uvicorn.run(app, host="0.0.0.0", port=port)
+
+# AWS Lambda handler (used by Zappa/Lambda)
+handler = Mangum(app)
