@@ -53,6 +53,10 @@ class Token(BaseModel):
     user: UserResponse
 
 
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+
+
 # Dependency
 def get_db():
     db = SessionLocal()
@@ -237,6 +241,29 @@ def login(
 def get_current_user_info(current_user: User = Depends(get_current_active_user)):
     """Get current user information."""
     return current_user
+
+
+@router.patch("/me", response_model=UserResponse)
+def update_current_user(
+    body: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Update current user's profile fields (currently: full_name)."""
+    try:
+        if body.full_name is not None:
+            name = str(body.full_name).strip()
+            current_user.full_name = name or None
+        db.add(current_user)
+        db.commit()
+        db.refresh(current_user)
+        return current_user
+    except SQLAlchemyError as e:
+        logger.exception("Update user DB error")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_db_error_detail(e),
+        )
 
 
 @router.get("/users/count")

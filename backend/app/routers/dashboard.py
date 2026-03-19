@@ -1,10 +1,13 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from app.database import SessionLocal
 from app.models.session import InterviewSession
-from typing import Dict
+from typing import Dict, List
+from pydantic import BaseModel
 from app.routers.auth import get_current_active_user
+from app.services.bedrock_service import get_bedrock_service
 
 # Sentinel for sorting when created_at may be None (avoid mixing types in sort key)
 _MIN_DT = datetime.min.replace(tzinfo=timezone.utc)
@@ -135,3 +138,94 @@ def get_history(
         }
         for s in sessions
     ]
+
+
+@router.get("/daily-log")
+def get_daily_log(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+    tz_offset_minutes: int = 0,
+):
+    """
+    Return the last 7 days of interview practice for the user, plus a streak count.
+
+    A day is "logged" when the user has at least one saved interview session
+    in `interview_sessions` for that date.
+    """
+    now = datetime.now(timezone.utc)
+    today = now.date()
+    start_date = today - timedelta(days=6)
+
+    # Compute streak over a larger window (so streak can exceed 7 days)
+    streak_window_start = today - timedelta(days=180)
+    try:
+        start_dt = datetime.combine(streak_window_start, datetime.min.time(), tzinfo=timezone.utc)
+        end_dt = datetime.combine(today + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc)
+        sessions = (
+            db.query(InterviewSession.created_at)
+            .filter(InterviewSession.user_id == current_user.id)
+            .filter(InterviewSession.created_at >= start_dt)
+            .filter(InterviewSession.created_at < end_dt)
+            .all()
+        )
+    except SQLAlchemyError as e:
+        raise
+
+    date_set = set()
+    offset = timedelta(minutes=int(tz_offset_minutes or 0))
+    for (created_at,) in sessions:
+        if created_at is None:
+            continue
+        if getattr(created_at, "tzinfo", None) is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        local_dt = created_at - offset  # JS getTimezoneOffset(): local = UTC - offset
+        date_set.add(local_dt.date().isoformat())
+
+    logged_dates = {iso for iso in date_set if iso >= start_date.isoformat() and iso <= today.isoformat()}
+
+    days = []
+    for i in range(7):
+        d = start_date + timedelta(days=i)
+        iso = d.isoformat()
+        days.append(
+            {
+                "date": iso,
+                "label": d.strftime("%a"),
+                "logged": iso in logged_dates,
+            }
+        )
+
+    streak = 0
+    if date_set:
+        end_iso = max(date_set)
+        cursor = datetime.fromisoformat(end_iso).date()
+        while cursor.isoformat() in date_set:
+            streak += 1
+            cursor = cursor - timedelta(days=1)
+
+    return {
+        "days": days,
+        "streak": streak,
+        "logged_dates": sorted(logged_dates),
+    }
+
+
+class ThemesRequest(BaseModel):
+    texts: List[str]
+    kind: str  # "strengths" | "weaknesses"
+
+
+@router.post("/themes")
+def get_themes(
+    body: ThemesRequest,
+    current_user=Depends(get_current_active_user),
+) -> Dict:
+    """Use AWS Bedrock to extract 5 useful theme phrases from feedback texts."""
+    if body.kind not in ("strengths", "weaknesses"):
+        return {"themes": []}
+    try:
+        bedrock = get_bedrock_service()
+        themes = bedrock.extract_themes(body.texts, body.kind)
+        return {"themes": themes}
+    except Exception:
+        return {"themes": []}

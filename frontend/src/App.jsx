@@ -39,6 +39,24 @@ function hasMoreThan3Lines(str) {
   return lines.length > 3 || s.length > PREVIEW_MAX_CHARS;
 }
 
+function starContributionPercent(score) {
+  const s = Number(score);
+  if (!Number.isFinite(s)) return null;
+  return Math.round((s / 5) * 25); // each STAR dimension contributes up to 25% of the overall score
+}
+
+function starGlyphs(score) {
+  const s = Math.max(0, Math.min(5, Math.round(Number(score) || 0)));
+  return Array.from({ length: 5 }, (_, i) => (i < s ? "*" : "o")).join(" ");
+}
+
+function toLocalISODate(d) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [authView, setAuthView] = useState("login");
@@ -57,15 +75,39 @@ export default function App() {
   const [followupAnswer, setFollowupAnswer] = useState("");
   const [followupFeedback, setFollowupFeedback] = useState("");
   const [followupScore, setFollowupScore] = useState(null);
+  const [followupStarBreakdown, setFollowupStarBreakdown] = useState(null);
+  const [strengthHighlight, setStrengthHighlight] = useState("");
+  const [followupStrengthHighlight, setFollowupStrengthHighlight] = useState("");
   const [sessionNotes, setSessionNotes] = useState("");
   const [followUpSessionNotes, setFollowUpSessionNotes] = useState("");
   const [draft, setDraft] = useState(null);
   const [feedback, setFeedback] = useState("");
   const [score, setScore] = useState(null);
+  const [starBreakdown, setStarBreakdown] = useState(null); // { scores: {situation, task, action, result}, feedback: {...} }
   const [isLoading, setIsLoading] = useState(false);
   const [dashboardData, setDashboardData] = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState("");
+  const [dailyLogData, setDailyLogData] = useState(null); // { days: [...], streak: number, logged_dates: [...] }
+  const [dailyLogLoading, setDailyLogLoading] = useState(false);
+  const [dailyLogError, setDailyLogError] = useState("");
+  const [interviewTotals, setInterviewTotals] = useState(null); // { total_interviews: number }
+  const [interviewTotalsLoading, setInterviewTotalsLoading] = useState(false);
+  const [interviewTotalsError, setInterviewTotalsError] = useState("");
+  const nowForCalendar = new Date();
+  const [calendarYear, setCalendarYear] = useState(nowForCalendar.getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState(nowForCalendar.getMonth() + 1); // 1-12
+  const [calendarVisitedDates, setCalendarVisitedDates] = useState([]);
+  const [calendarEventsByDate, setCalendarEventsByDate] = useState({});
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [calendarError, setCalendarError] = useState("");
+  const [calendarEventModal, setCalendarEventModal] = useState(null); // null | { mode: "add", date?: "YYYY-MM-DD" } | { mode: "edit", event: {...} }
+  const [calendarEventForm, setCalendarEventForm] = useState({ event_date: "", title: "", start_time: "", end_time: "", notes: "" });
+  const [calendarEventSaving, setCalendarEventSaving] = useState(false);
+  const [calendarEventError, setCalendarEventError] = useState("");
+  const [settingsFullName, setSettingsFullName] = useState("");
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsError, setSettingsError] = useState("");
   const [recentSessionsPreview, setRecentSessionsPreview] = useState([]);
   const [recentSessionsLoading, setRecentSessionsLoading] = useState(false);
   const [recentSessionsError, setRecentSessionsError] = useState("");
@@ -77,6 +119,7 @@ export default function App() {
   const [showFullInterviewHistory, setShowFullInterviewHistory] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef(null);
+  const visitRecordedForDateRef = useRef(null); // YYYY-MM-DD (local)
 
   // Timed interview state
   const [showTimedSetup, setShowTimedSetup] = useState(false);
@@ -90,7 +133,7 @@ export default function App() {
   const [timedQuestionIndex, setTimedQuestionIndex] = useState(0);
   const [timedTimePerQuestion, setTimedTimePerQuestion] = useState([]); // seconds spent per question
   const [timedQuestionStartAt, setTimedQuestionStartAt] = useState(null); // Date.now() when current question shown
-  const [timedResponses, setTimedResponses] = useState([]); // { question, userAnswer, feedback, score, timeSpentSeconds }
+  const [timedResponses, setTimedResponses] = useState([]); // { question, userAnswer, feedback, score, timeSpentSeconds, starScores?, starFeedback? }
   const [timedSessionSummary, setTimedSessionSummary] = useState(null); // set when session ends
   const [timedSessionDurationSeconds, setTimedSessionDurationSeconds] = useState(null);
   const timerIntervalRef = useRef(null);
@@ -117,6 +160,11 @@ export default function App() {
       setUser(JSON.parse(userData));
     }
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    setSettingsFullName(String(user.full_name || ""));
+  }, [user]);
   
   useEffect(() => {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -227,12 +275,20 @@ export default function App() {
     setFollowupAnswer("");
     setFollowupFeedback("");
     setFollowupScore(null);
+    setFollowupStarBreakdown(null);
+    setStrengthHighlight("");
+    setFollowupStrengthHighlight("");
     setSessionNotes("");
     setFollowUpSessionNotes("");
     setFeedback("");
     setScore(null);
+    setStarBreakdown(null);
     setDashboardData(null);
     setDashboardError("");
+    setDailyLogData(null);
+    setDailyLogError("");
+    setInterviewTotals(null);
+    setInterviewTotalsError("");
     localStorage.removeItem("interviewDraft");
   };
 
@@ -245,10 +301,14 @@ export default function App() {
     setFollowupAnswer("");
     setFollowupFeedback("");
     setFollowupScore(null);
+    setFollowupStarBreakdown(null);
+    setStrengthHighlight("");
+    setFollowupStrengthHighlight("");
     setSessionNotes("");
     setFollowUpSessionNotes("");
     setFeedback("");
     setScore(null);
+    setStarBreakdown(null);
     localStorage.removeItem("interviewDraft");
   };
 
@@ -353,6 +413,12 @@ export default function App() {
         const data = await response.json();
         setFeedback(data.feedback);
         setScore(data.score);
+        setStrengthHighlight(String(data.strength_highlight || "").trim());
+        setStarBreakdown(
+          data?.star_scores && data?.star_feedback
+            ? { scores: data.star_scores, feedback: data.star_feedback }
+            : null
+        );
         setConversation((prev) => [
           ...prev,
           { question: currentQuestion, answer: userAnswer }
@@ -423,10 +489,14 @@ export default function App() {
     setIsLoading(true);
     setFeedback("");
     setScore(null);
+    setStarBreakdown(null);
+    setStrengthHighlight("");
     setFollowupQuestion("");
     setFollowupAnswer("");
     setFollowupFeedback("");
     setFollowupScore(null);
+    setFollowupStarBreakdown(null);
+    setFollowupStrengthHighlight("");
     setFollowUpSessionNotes("");
     
     try {
@@ -487,6 +557,12 @@ export default function App() {
         const data = await response.json();
         setFollowupFeedback(data.feedback);
         setFollowupScore(data.score);
+        setFollowupStrengthHighlight(String(data.strength_highlight || "").trim());
+        setFollowupStarBreakdown(
+          data?.star_scores && data?.star_feedback
+            ? { scores: data.star_scores, feedback: data.star_feedback }
+            : null
+        );
         setConversation((prev) => [
           ...prev,
           { question: followupQuestion, answer: followupAnswer }
@@ -622,9 +698,285 @@ export default function App() {
     }
   };
 
+  const fetchDailyLogData = async () => {
+    setDailyLogLoading(true);
+    setDailyLogError("");
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setDailyLogData(null);
+        return;
+      }
+
+      const tzOffset = new Date().getTimezoneOffset();
+      const res = await fetch(apiUrl(`/api/dashboard/daily-log?tz_offset_minutes=${tzOffset}`), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.status === 401) {
+        setDailyLogError("Session expired. Please log in again.");
+        handleLogout();
+        return;
+      }
+
+      if (!res.ok) throw new Error("Failed to load daily log");
+      const data = await res.json();
+      setDailyLogData(data);
+    } catch (e) {
+      setDailyLogError(e.message || "Could not load daily log");
+      setDailyLogData(null);
+    } finally {
+      setDailyLogLoading(false);
+    }
+  };
+
+  const fetchCalendarMonth = async (year, month) => {
+    setCalendarLoading(true);
+    setCalendarError("");
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setCalendarVisitedDates([]);
+        return;
+      }
+
+      const tzOffset = new Date().getTimezoneOffset();
+      const res = await fetch(apiUrl(`/api/activity/calendar?year=${year}&month=${month}&tz_offset_minutes=${tzOffset}`), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.status === 401) {
+        setCalendarError("Session expired. Please log in again.");
+        handleLogout();
+        return;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = data?.detail;
+        const text = typeof msg === "string" ? msg : "Failed to load calendar month";
+        throw new Error(text);
+      }
+      setCalendarVisitedDates(Array.isArray(data.visited_dates) ? data.visited_dates : []);
+    } catch (e) {
+      setCalendarError(e.message || "Could not load calendar");
+      setCalendarVisitedDates([]);
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
+  const fetchCalendarEvents = async (year, month) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setCalendarEventsByDate({});
+        return;
+      }
+      const res = await fetch(apiUrl(`/api/calendar/events?year=${year}&month=${month}`), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 401) return;
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return;
+      setCalendarEventsByDate(data.events_by_date || {});
+    } catch {
+      setCalendarEventsByDate({});
+    }
+  };
+
+  const openAddEventModal = (isoDate) => {
+    const date = isoDate || toLocalISODate(new Date());
+    setCalendarEventModal({ mode: "add", date });
+    setCalendarEventForm({ event_date: date, title: "", start_time: "", end_time: "", notes: "" });
+    setCalendarEventError("");
+  };
+
+  const openEditEventModal = (event) => {
+    setCalendarEventModal({ mode: "edit", event });
+    setCalendarEventForm({
+      event_date: event.event_date || "",
+      title: event.title || "",
+      start_time: event.start_time || "",
+      end_time: event.end_time || "",
+      notes: event.notes || "",
+    });
+    setCalendarEventError("");
+  };
+
+  const closeCalendarEventModal = () => {
+    setCalendarEventModal(null);
+    setCalendarEventError("");
+  };
+
+  const saveCalendarEvent = async () => {
+    setCalendarEventError("");
+    const start = calendarEventForm.start_time.trim();
+    const end = calendarEventForm.end_time.trim();
+    if (start && end) {
+      const norm = (t) => {
+        const [h, m] = t.split(":");
+        return `${String(h).padStart(2, "0")}:${String(m || "0").padStart(2, "0")}`;
+      };
+      if (norm(end) <= norm(start)) {
+        setCalendarEventError("End time must be after start time (e.g. 1:15 PM to 3:30 PM).");
+        return;
+      }
+    }
+    setCalendarEventSaving(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Not logged in");
+      const { mode, event } = calendarEventModal;
+      const eventDate = mode === "add" ? calendarEventModal.date : calendarEventForm.event_date;
+      const body = {
+        event_date: eventDate,
+        title: calendarEventForm.title.trim() || "Untitled",
+        start_time: start || null,
+        end_time: end || null,
+        notes: calendarEventForm.notes.trim() || null,
+      };
+      if (mode === "add") {
+        const res = await fetch(apiUrl("/api/calendar/events"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.detail || "Failed to add event");
+      } else {
+        const res = await fetch(apiUrl(`/api/calendar/events/${event.id}`), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.detail || "Failed to update event");
+      }
+      closeCalendarEventModal();
+      fetchCalendarEvents(calendarYear, calendarMonth);
+    } catch (e) {
+      setCalendarEventError(e.message || "Failed to save");
+    } finally {
+      setCalendarEventSaving(false);
+    }
+  };
+
+  const deleteCalendarEvent = async () => {
+    if (!calendarEventModal || calendarEventModal.mode !== "edit") return;
+    setCalendarEventSaving(true);
+    setCalendarEventError("");
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Not logged in");
+      const res = await fetch(apiUrl(`/api/calendar/events/${calendarEventModal.event.id}`), {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to delete event");
+      closeCalendarEventModal();
+      fetchCalendarEvents(calendarYear, calendarMonth);
+    } catch (e) {
+      setCalendarEventError(e.message || "Failed to delete");
+    } finally {
+      setCalendarEventSaving(false);
+    }
+  };
+
+  const saveSettings = async () => {
+    setSettingsSaving(true);
+    setSettingsError("");
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Not logged in");
+
+      const res = await fetch(apiUrl("/api/auth/me"), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ full_name: settingsFullName }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.status === 401) {
+        setSettingsError("Session expired. Please log in again.");
+        handleLogout();
+        return;
+      }
+
+      if (!res.ok) {
+        const msg = data?.detail;
+        const text = typeof msg === "string" ? msg : "Failed to save settings.";
+        throw new Error(text);
+      }
+
+      setUser(data);
+      localStorage.setItem("user", JSON.stringify(data));
+    } catch (e) {
+      setSettingsError(e.message || "Failed to save settings");
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  const fetchInterviewTotals = async () => {
+    setInterviewTotalsLoading(true);
+    setInterviewTotalsError("");
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setInterviewTotals(null);
+        return;
+      }
+
+      const res = await fetch(apiUrl("/api/dashboard/stats"), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.status === 401) {
+        setInterviewTotalsError("Session expired. Please log in again.");
+        handleLogout();
+        return;
+      }
+
+      if (!res.ok) throw new Error("Failed to load interview totals");
+      const stats = await res.json();
+      setInterviewTotals({ total_interviews: stats.total_interviews ?? 0 });
+    } catch (e) {
+      setInterviewTotalsError(e.message || "Could not load interview totals");
+      setInterviewTotals(null);
+    } finally {
+      setInterviewTotalsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (currentView === "dashboard" && user) {
       fetchDashboardData();
+    }
+  }, [currentView, user]);
+
+  useEffect(() => {
+    if (currentView === "interview" && user) {
+      fetchDailyLogData();
+    }
+  }, [currentView, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    // Calendar and streak are based on practice (saved sessions), not login visits.
+  }, [currentView, user]);
+
+  useEffect(() => {
+    if (currentView === "calendar" && user) {
+      fetchCalendarMonth(calendarYear, calendarMonth);
+      fetchCalendarEvents(calendarYear, calendarMonth);
+    }
+  }, [currentView, user, calendarYear, calendarMonth]);
+
+  useEffect(() => {
+    if (currentView === "interview" && user) {
+      fetchInterviewTotals();
     }
   }, [currentView, user]);
 
@@ -707,6 +1059,8 @@ export default function App() {
                 userAnswer: answerToSubmit,
                 feedback: data.feedback,
                 score: data.score,
+                starScores: data?.star_scores || null,
+                starFeedback: data?.star_feedback || null,
                 timeSpentSeconds: timeSpentThisQuestion,
               },
             ];
@@ -736,6 +1090,8 @@ export default function App() {
                 userAnswer: answerToSubmit,
                 feedback: "Time expired — not evaluated.",
                 score: null,
+                starScores: null,
+                starFeedback: null,
                 timeSpentSeconds: timeSpentThisQuestion,
               },
             ];
@@ -749,6 +1105,8 @@ export default function App() {
               userAnswer: answerToSubmit,
               feedback: "Time expired — error evaluating.",
               score: null,
+              starScores: null,
+              starFeedback: null,
               timeSpentSeconds: timeSpentThisQuestion,
             },
           ];
@@ -813,10 +1171,12 @@ export default function App() {
     setUserAnswer("");
     setFeedback("");
     setScore(null);
+    setStarBreakdown(null);
     setFollowupQuestion("");
     setFollowupAnswer("");
     setFollowupFeedback("");
     setFollowupScore(null);
+    setFollowupStarBreakdown(null);
     setTimedSessionSummary(null);
     const type = timedInterviewType || "technical";
     setInterviewType(type);
@@ -888,6 +1248,8 @@ export default function App() {
             userAnswer: userAnswer,
             feedback: data.feedback,
             score: data.score,
+            starScores: data?.star_scores || null,
+            starFeedback: data?.star_feedback || null,
             timeSpentSeconds: timeSpentThisQuestion,
           },
         ];
@@ -973,8 +1335,17 @@ export default function App() {
   if (!user) {
     return (
       <div className="app">
+        <div className="top-left-actions">
+          <button
+            type="button"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="toggle-btn"
+          >
+            {theme === "dark" ? "Light Mode" : "Dark Mode"}
+          </button>
+        </div>
         <div className="card">
-          <h1>LLM Interview Simulator</h1>
+          <h1>Interview Simulator</h1>
           <p>Practice interviews with AI-powered feedback</p>
           
           {authView === "login" ? (
@@ -1102,6 +1473,38 @@ export default function App() {
     );
   }
 
+  const renderStarBreakdown = (scores, feedback) => {
+    if (!scores || !feedback) return null;
+    const dims = [
+      ["situation", "Situation"],
+      ["task", "Task"],
+      ["action", "Action"],
+      ["result", "Result"],
+    ];
+
+    return (
+      <div className="star-breakdown">
+        {dims.map(([key, label]) => {
+          const points = starContributionPercent(scores[key]);
+          const numeric = Number(scores[key]);
+          return (
+            <div key={key} className="star-breakdown-row">
+              <div className="star-breakdown-top">
+                <span className="star-breakdown-label">{label}</span>
+                <span className="star-breakdown-glyphs">{starGlyphs(scores[key])}</span>
+                {Number.isFinite(numeric) && (
+                  <span className="star-breakdown-numeric">{numeric}/5</span>
+                )}
+                {points != null && <span className="star-breakdown-points">{points}%</span>}
+              </div>
+              {feedback[key] ? <div className="star-breakdown-explain">{feedback[key]}</div> : null}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   const renderInterviewView = () => {
     // Timed session summary (end screen)
     if (timedSessionSummary) {
@@ -1121,12 +1524,14 @@ export default function App() {
             <h3>Question breakdown</h3>
             {responses.map((r, i) => (
               <div key={i} className="timed-summary-item">
+                <div className="timed-summary-progress">Question {i + 1} of {TIMED_QUESTIONS_COUNT}</div>
                 <div className="timed-summary-q">{r.question}</div>
                 <div className="timed-summary-meta">
                   {r.score != null && <span className="timed-summary-score-pill">{r.score}%</span>}
                   <span className="timed-summary-time">{r.timeSpentSeconds}s</span>
                 </div>
                 {r.feedback && <div className="timed-summary-feedback">{r.feedback}</div>}
+                {renderStarBreakdown(r.starScores, r.starFeedback)}
               </div>
             ))}
           </div>
@@ -1223,6 +1628,9 @@ export default function App() {
         <div className="content">
           <h2>Interview Practice</h2>
           <p>Enter your role and choose an interview type to start practicing.</p>
+          <div className="streak-right">
+            Streak: {dailyLogLoading ? "…" : dailyLogData?.streak ?? 0} day(s)
+          </div>
 
           {draft && !showTimedSetup && (
             <div className="resume-banner">
@@ -1304,7 +1712,13 @@ export default function App() {
             <button
               type="button"
               className="interview-btn timed-mode-btn"
-              onClick={() => setShowTimedSetup(true)}
+              onClick={() => {
+                if (!role.trim()) {
+                  alert("Please enter a role to start a timed interview for.");
+                  return;
+                }
+                setShowTimedSetup(true);
+              }}
               disabled={isLoading}
             >
               Start Timed Interview
@@ -1413,14 +1827,13 @@ export default function App() {
             Stop Interview
           </button>
         </div>
-        {isTimedMode && (
-          <div className="progress-indicator">
-            Question {timedQuestionIndex + 1} of {TIMED_QUESTIONS_COUNT}
-          </div>
-        )}
         
         <div className="question-section">
-          <h3>Question:</h3>
+          <h3>
+            {isTimedMode
+              ? `Question ${timedQuestionIndex + 1} of ${TIMED_QUESTIONS_COUNT}:`
+              : "Question:"}
+          </h3>
           <div className="question-meta">
             <span className="meta-pill">{role || "Role"}</span>
             {company && <span className="meta-pill">{company}</span>}
@@ -1483,9 +1896,23 @@ export default function App() {
             <div className="score-display">
               <span className="score">Score: {score}%</span>
             </div>
-            <div className="feedback-box">
-              <p>{feedback}</p>
-            </div>
+            {interviewType === "behavioral" ? (
+              <div className="feedback-split">
+                <div className="feedback-box">
+                  <h4>Strengths</h4>
+                  <p>{strengthHighlight || "—"}</p>
+                </div>
+                <div className="feedback-box">
+                  <h4>Areas for improvement</h4>
+                  <p>{feedback}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="feedback-box">
+                <p>{feedback}</p>
+              </div>
+            )}
+            {renderStarBreakdown(starBreakdown?.scores, starBreakdown?.feedback)}
             {followupQuestion && (interviewType === "behavioral" || interviewType === "design") && (
               <div className="question-box">
                 <h4>Follow-up Question:</h4>
@@ -1520,8 +1947,27 @@ export default function App() {
                   {isLoading ? "Evaluating..." : "Submit Follow-up"}
                 </button>
                 {followupFeedback && (
-                  <div className="feedback-box">
-                    <p>{followupFeedback}</p>
+                  <div>
+                    {interviewType === "behavioral" ? (
+                      <div className="feedback-split">
+                        <div className="feedback-box">
+                          <h4>Strengths</h4>
+                          <p>{followupStrengthHighlight || "—"}</p>
+                        </div>
+                        <div className="feedback-box">
+                          <h4>Areas for improvement</h4>
+                          <p>{followupFeedback}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="feedback-box">
+                        <p>{followupFeedback}</p>
+                      </div>
+                    )}
+                    {renderStarBreakdown(
+                      followupStarBreakdown?.scores,
+                      followupStarBreakdown?.feedback
+                    )}
                     {followupScore !== null && (
                       <div className="score-display">
                         <span className="score">Score: {followupScore}%</span>
@@ -1584,6 +2030,9 @@ export default function App() {
       <div className="content">
         <h2>Dashboard</h2>
         <p>Your interview progress and statistics</p>
+        <p className="dashboard-total-interviews">
+          Total interviews completed: {stats.total_interviews || 0}
+        </p>
         
         {!hasEnoughInterviews && (
           <div className="no-history">
@@ -1868,9 +2317,229 @@ export default function App() {
     );
   };
 
+  const renderCalendarView = () => {
+    const year = calendarYear;
+    const month = calendarMonth; // 1-12
+    const monthName = new Date(year, month - 1, 1).toLocaleString(undefined, { month: "long" });
+
+    const firstOfMonth = new Date(year, month - 1, 1);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const startOffset = firstOfMonth.getDay(); // 0 (Sun) - 6 (Sat)
+    const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+
+    const cells = Array.from({ length: totalCells }, (_, idx) => {
+      const dayNum = idx - startOffset + 1;
+      if (dayNum < 1 || dayNum > daysInMonth) return null;
+      return dayNum;
+    });
+
+    const visitedSet = new Set(calendarVisitedDates);
+    const todayISO = toLocalISODate(new Date());
+
+    const goPrevMonth = () => {
+      if (month === 1) {
+        setCalendarMonth(12);
+        setCalendarYear((y) => y - 1);
+      } else {
+        setCalendarMonth((m) => m - 1);
+      }
+    };
+
+    const goNextMonth = () => {
+      if (month === 12) {
+        setCalendarMonth(1);
+        setCalendarYear((y) => y + 1);
+      } else {
+        setCalendarMonth((m) => m + 1);
+      }
+    };
+
+    const eventsForDate = (iso) => calendarEventsByDate[iso] || [];
+
+    return (
+      <div className="content calendar-page">
+        <h2>Activity Calendar</h2>
+
+        <div className="calendar-top-row">
+          <button type="button" onClick={goPrevMonth} className="calendar-nav-btn">
+            Prev
+          </button>
+          <div className="calendar-month-title">
+            {monthName} {year}
+          </div>
+          <button type="button" onClick={goNextMonth} className="calendar-nav-btn">
+            Next
+          </button>
+        </div>
+
+        <div className="calendar-add-row">
+          <button type="button" onClick={() => openAddEventModal()} className="calendar-add-event-btn">
+            Add event
+          </button>
+        </div>
+
+        {calendarError && <p className="calendar-error">{calendarError}</p>}
+
+        {calendarLoading ? (
+          <p>Loading calendar...</p>
+        ) : (
+          <div className="calendar-grid">
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+              <div key={d} className="calendar-weekday">
+                {d}
+              </div>
+            ))}
+
+            {cells.map((dayNum, idx) => {
+              if (dayNum == null) {
+                return <div key={`empty-${idx}`} className="calendar-day calendar-empty" />;
+              }
+              const iso = toLocalISODate(new Date(year, month - 1, dayNum));
+              const visited = visitedSet.has(iso);
+              const isToday = iso === todayISO;
+              const events = eventsForDate(iso);
+              return (
+                <div
+                  key={iso}
+                  className={`calendar-day ${visited ? "visited" : ""} ${isToday ? "today" : ""}`}
+                  title={visited ? "Practiced" : "Not practiced"}
+                  onClick={() => openAddEventModal(iso)}
+                >
+                  <span className="calendar-day-num">{dayNum}</span>
+                  {events.length > 0 && (
+                    <div className="calendar-day-events">
+                      {events.map((ev) => (
+                        <div
+                          key={ev.id}
+                          className="calendar-day-event"
+                          onClick={(e) => { e.stopPropagation(); openEditEventModal(ev); }}
+                          title={`${ev.title}${ev.start_time || ev.end_time ? ` ${ev.start_time || ""}-${ev.end_time || ""}` : ""}`}
+                        >
+                          {ev.title}
+                          {(ev.start_time || ev.end_time) && (
+                            <span className="calendar-event-time">
+                              {[ev.start_time, ev.end_time].filter(Boolean).join("–")}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="calendar-legend">
+          <span className="legend-item">
+            <span className="legend-swatch visited" /> Practiced
+          </span>
+          <span className="legend-item">
+            <span className="legend-swatch today" /> Today
+          </span>
+        </div>
+
+        {calendarEventModal && (
+          <div className="modal-overlay" onClick={closeCalendarEventModal}>
+            <div className="modal-content calendar-event-modal" onClick={(e) => e.stopPropagation()}>
+              <h3>{calendarEventModal.mode === "add" ? "Add event" : "Edit event"}</h3>
+              <label className="calendar-event-field">
+                Date
+                <input
+                  type="date"
+                  value={calendarEventModal.mode === "add" ? (calendarEventModal.date || "") : calendarEventForm.event_date}
+                  onChange={(e) => {
+                    const v = e.target.value || "";
+                    if (calendarEventModal.mode === "add") setCalendarEventModal((m) => ({ ...m, date: v }));
+                    else setCalendarEventForm((f) => ({ ...f, event_date: v }));
+                  }}
+                />
+              </label>
+              <label className="calendar-event-field">
+                Title
+                <input
+                  type="text"
+                  value={calendarEventForm.title}
+                  onChange={(e) => setCalendarEventForm((f) => ({ ...f, title: e.target.value }))}
+                  placeholder="e.g. Interview - Meta"
+                />
+              </label>
+              <label className="calendar-event-field">
+                Start time
+                <input
+                  type="time"
+                  value={calendarEventForm.start_time}
+                  onChange={(e) => setCalendarEventForm((f) => ({ ...f, start_time: e.target.value }))}
+                />
+              </label>
+              <label className="calendar-event-field">
+                End time
+                <input
+                  type="time"
+                  value={calendarEventForm.end_time}
+                  onChange={(e) => setCalendarEventForm((f) => ({ ...f, end_time: e.target.value }))}
+                />
+              </label>
+              <label className="calendar-event-field">
+                Notes
+                <textarea
+                  value={calendarEventForm.notes}
+                  onChange={(e) => setCalendarEventForm((f) => ({ ...f, notes: e.target.value }))}
+                  placeholder="Optional notes"
+                  rows={2}
+                />
+              </label>
+              {calendarEventError && <p className="calendar-event-error">{calendarEventError}</p>}
+              <div className="calendar-event-actions">
+                <button type="button" onClick={saveCalendarEvent} disabled={calendarEventSaving} className="submit-btn">
+                  {calendarEventSaving ? "Saving..." : "Save"}
+                </button>
+                {calendarEventModal.mode === "edit" && (
+                  <button type="button" onClick={deleteCalendarEvent} disabled={calendarEventSaving} className="back-btn">
+                    Delete
+                  </button>
+                )}
+                <button type="button" onClick={closeCalendarEventModal} className="back-btn">Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderSettingsView = () => {
+    return (
+      <div className="content settings-page">
+        <h2>Settings</h2>
+        <p>Update your profile name.</p>
+
+        <div className="settings-form">
+          <label className="settings-label">
+            Full name
+            <input
+              type="text"
+              value={settingsFullName}
+              onChange={(e) => setSettingsFullName(e.target.value)}
+              placeholder="e.g., Vinisha Patel"
+              disabled={settingsSaving}
+            />
+          </label>
+
+          {settingsError && <p className="settings-error">{settingsError}</p>}
+
+          <button type="button" onClick={saveSettings} disabled={settingsSaving} className="submit-btn">
+            {settingsSaving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="app">
-      <div className="theme-toggle">
+      <div className="top-left-actions">
         <button
           type="button"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -1879,28 +2548,51 @@ export default function App() {
           {theme === "dark" ? "Light Mode" : "Dark Mode"}
         </button>
       </div>
+      <div className="top-right-actions">
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => setCurrentView("settings")}
+          aria-label="Settings"
+          title="Settings"
+        >
+          ⚙
+        </button>
+        <button onClick={handleLogout} className="logout-btn top-right-logout">
+          Logout
+        </button>
+      </div>
       <div className="card">
-        <h1>Welcome, {user.full_name || user.username}!</h1>
+        <h1>
+          Welcome, {String((user.full_name || user.username || "")).trim().split(/\s+/)[0] || "there"}!
+        </h1>
         <p>LLM Interview Simulator</p>
-        
+      
         <div className="nav">
-          <button 
+          <button
             onClick={() => setCurrentView("interview")}
             className={currentView === "interview" ? "active" : ""}
           >
             Interview
           </button>
-          <button 
+          <button
             onClick={() => setCurrentView("dashboard")}
             className={currentView === "dashboard" ? "active" : ""}
           >
             Dashboard
           </button>
-          <button onClick={handleLogout}>Logout</button>
+          <button
+            onClick={() => setCurrentView("calendar")}
+            className={currentView === "calendar" ? "active" : ""}
+          >
+            Calendar
+          </button>
         </div>
-        
+      
         {currentView === "interview" && renderInterviewView()}
         {currentView === "dashboard" && renderDashboardView()}
+        {currentView === "calendar" && renderCalendarView()}
+        {currentView === "settings" && renderSettingsView()}
       </div>
 
       {showTimedConfirmModal && (

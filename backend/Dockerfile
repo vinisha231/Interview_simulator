@@ -25,15 +25,15 @@ WORKDIR /app
 # Copy requirements file first (for better Docker layer caching)
 # This allows Docker to cache the dependency installation step
 # and only reinstall dependencies if requirements change
-COPY requirements-app.txt .
+# Build from repo root: docker build -f backend/Dockerfile .
+COPY requirements.txt .
 
 # Install Python dependencies
 # --no-cache-dir reduces image size by not storing pip cache
-RUN pip install --no-cache-dir -r requirements-app.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all application code into the container
-# This includes our FastAPI app, routers, and configuration files
-COPY . .
+# Copy backend application code (build from repo root: docker build -f backend/Dockerfile .)
+COPY backend/ .
 
 # Expose port 8000 to the outside world
 # This tells Docker that our application will listen on port 8000
