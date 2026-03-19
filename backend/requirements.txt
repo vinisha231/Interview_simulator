@@ -5,7 +5,9 @@
 #
 # Why each package is needed:
 # - fastapi: The main web framework for building our API
-# - uvicorn: ASGI server to run our FastAPI application
+# - uvicorn: ASGI server to run our FastAPI app
+# Core FastAPI dependencies
+# - uvicorn: ASGI server to run our FastAPI app
 # - python-dotenv: Load environment variables from .env files
 # - pydantic: Data validation and serialization for our API models
 # - python-multipart: Handle file uploads and form data
@@ -46,7 +48,7 @@ cryptography==41.0.7         # Cryptographic library for database encryption
 # HTTP client
 httpx==0.25.2                # Async HTTP client for API calls
 
-# CORS and middleware
+# HTTP client / requests (for some integrations)
 requests==2.32.3
 
 # Authentication and security
