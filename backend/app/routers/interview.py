@@ -20,7 +20,7 @@ Author: LLM Interview Simulator Team
 # Import necessary libraries
 from fastapi import APIRouter, HTTPException  # FastAPI router and error handling
 from pydantic import BaseModel  # Data validation and serialization
-from typing import Optional, List  # Type hints for better code documentation
+from typing import Optional, List, Dict  # Type hints for better code documentation
 import random
 import re
 
@@ -226,6 +226,9 @@ class InterviewResponse(BaseModel):
     score: int
     suggestions: List[str]
     strength_highlight: Optional[str] = None
+    # Behavioral (STAR) breakdown. Only returned when interview_type == "behavioral".
+    star_scores: Optional[Dict[str, float]] = None  # situation, task, action, result (each 1-5)
+    star_feedback: Optional[Dict[str, str]] = None  # situation, task, action, result (short explanations)
 
 # Define an endpoint to get sample interview questions
 @router.get("/")
@@ -404,15 +407,19 @@ async def evaluate_answer(request: InterviewRequest):
             return True
         return False
 
+    normalized_type = (request.interview_type or "technical").lower()
+
     if is_low_quality_answer(request.user_answer, request.interview_type):
         return InterviewResponse(
             feedback="Your answer is too short or unclear to evaluate. Please provide a complete, specific response.",
-            score=2,
+            score=20,
             suggestions=[
                 "Answer in full sentences with concrete details.",
                 "Explain your reasoning step-by-step.",
                 "Stay focused on the question asked."
-            ]
+            ],
+            star_scores=None,
+            star_feedback=None,
         )
 
     try:
@@ -426,25 +433,42 @@ async def evaluate_answer(request: InterviewRequest):
             interview_type=request.interview_type
         )
         
-        # Use AI rubric-based score and feedback as the single source of truth
-        if "overall_score" in evaluation and evaluation["overall_score"] is not None:
-            final_score = max(0, min(100, int(evaluation["overall_score"])))
-        else:
-            communication = evaluation.get("communication_score", 3)
-            technical = evaluation.get("technical_score", 3)
-            problem_solving = evaluation.get("problem_solving_score", 3)
-            professional = evaluation.get("professional_tone_score", 3)
-            final_score = int(((communication + technical + problem_solving + professional) / 4) * 20)
+        # Use overall_score from evaluation (always computed from dimensions in bedrock for consistency)
+        final_score = max(0, min(100, int(evaluation.get("overall_score", 60))))
 
         suggestions = evaluation.get("suggestions", [])
         feedback_text = evaluation.get("feedback", "No feedback provided.")
         strength_highlight = evaluation.get("strength_highlight") or ""
 
+        star_scores = None
+        star_feedback = None
+        if normalized_type == "behavioral":
+            # Bedrock returns STAR breakdown fields for behavioral interviews.
+            s = evaluation.get("situation_score")
+            t = evaluation.get("task_score")
+            a = evaluation.get("action_score")
+            r = evaluation.get("result_score")
+            if s is not None and t is not None and a is not None and r is not None:
+                star_scores = {
+                    "situation": float(s),
+                    "task": float(t),
+                    "action": float(a),
+                    "result": float(r),
+                }
+                star_feedback = {
+                    "situation": str(evaluation.get("situation_feedback") or ""),
+                    "task": str(evaluation.get("task_feedback") or ""),
+                    "action": str(evaluation.get("action_feedback") or ""),
+                    "result": str(evaluation.get("result_feedback") or ""),
+                }
+
         return InterviewResponse(
             feedback=feedback_text,
             score=final_score,
             suggestions=suggestions,
-            strength_highlight=strength_highlight
+            strength_highlight=strength_highlight,
+            star_scores=star_scores,
+            star_feedback=star_feedback,
         )
         
     except Exception as e:

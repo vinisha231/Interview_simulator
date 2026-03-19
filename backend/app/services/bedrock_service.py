@@ -33,6 +33,25 @@ LLAMA_MODEL = "meta.llama2-70b-chat-v1"
 DEFAULT_MODEL = os.getenv("BEDROCK_MODEL_ID", CLAUDE_MODEL)
 
 
+def _score_1_5(value, default: int = 3):
+    """Normalize a dimension score to 1-5. Invalid/missing -> default."""
+    if value is None:
+        return default
+    try:
+        x = int(round(float(value)))
+        return max(1, min(5, x))
+    except (TypeError, ValueError):
+        return default
+
+
+def _overall_from_dimensions(scores: list) -> int:
+    """Compute 0-100 overall from 1-5 dimension scores. Same formula for all interview types."""
+    if not scores:
+        return 60
+    avg = sum(scores) / len(scores)
+    return max(0, min(100, int(round(avg * 20))))
+
+
 def _get_bedrock_client():
     """Lazy client so env (e.g. from EB get-config) is loaded first."""
     return boto3.client(
@@ -201,6 +220,7 @@ Give feedback in the same style as behavioral: start with a concrete, descriptiv
         """
         Evaluate an interview answer using Bedrock with rubric-based scoring and feedback.
         """
+        normalized_type = (interview_type or "").lower()
         rubric = self._rubric_for_type(interview_type)
         system_prompt = """You are an expert interview evaluator. Score and give feedback strictly
         based on the provided rubric for this interview type. Always start feedback with a
@@ -209,17 +229,51 @@ Give feedback in the same style as behavioral: start with a concrete, descriptiv
         
         baseline_note = (
             " For TECHNICAL: compare the answer to the standard/canonical solution (e.g. correct time/space complexity); score 0-100 relative to that baseline."
-            if (interview_type or "").lower() == "technical" else ""
+            if normalized_type == "technical" else ""
         )
+        is_behavioral = normalized_type == "behavioral"
+
+        if is_behavioral:
+            scoring_instruction = (
+                "3. Score each STAR dimension 1-5 (Situation, Task, Action, Result) and provide brief 1-2 sentence feedback "
+                "for each dimension.\n"
+                "   - situation_score, task_score, action_score, result_score\n"
+                "   - situation_feedback, task_feedback, action_feedback, result_feedback"
+            )
+            json_fields = """
+    "situation_score": <1-5>,
+    "task_score": <1-5>,
+    "action_score": <1-5>,
+    "result_score": <1-5>,
+    "situation_feedback": "<1-2 sentences>",
+    "task_feedback": "<1-2 sentences>",
+    "action_feedback": "<1-2 sentences>",
+    "result_feedback": "<1-2 sentences>","""
+        else:
+            scoring_instruction = (
+                "3. Score each dimension 1-5 (map rubric dimensions to: communication_score, technical_score, "
+                "problem_solving_score, professional_tone_score)."
+            )
+            json_fields = """
+    "communication_score": <1-5>,
+    "technical_score": <1-5>,
+    "problem_solving_score": <1-5>,
+    "professional_tone_score": <1-5>,"""
+
         prompt = f"""Evaluate this interview answer using the rubric below. Score and provide feedback
         based only on the candidate's response and the rubric.{baseline_note}
 
 {rubric}
 
-1. strength_highlight: One to two descriptive sentences on what the candidate did well.
+CONSISTENT SCORING RULES (apply the same way for technical and behavioral):
+- For non-answers (e.g. "hello world", "whatever", single words, placeholder text, or clearly irrelevant/short replies): score EVERY dimension 1. This keeps scores consistent across interview types (e.g. ~5-20%).
+- For real but weak answers: use 1-3 per dimension. For good answers: 3-5. Be consistent so that similar quality gets similar scores regardless of interview type.
+- You MUST output each dimension score as an integer 1-5. The overall_score will be computed from these (average of dimensions × 20), so do not try to set overall_score arbitrarily.
+
+1. strength_highlight: One to two descriptive sentences on what the candidate did well (for non-answers, note that the response was too short to evaluate).
 2. feedback: Start with that strength, then 2-3 sentences of feedback that reference the rubric (what met criteria, what was missing or could improve).
-3. Score each dimension 1-5 (map rubric dimensions to: communication_score, technical_score, problem_solving_score, professional_tone_score).
-4. overall_score: One number 0-100 reflecting how well the response satisfied the rubric overall.
+{scoring_instruction}
+4. overall_score: Set to: round(average of all dimension scores × 20). So 4 dimensions averaging 1 → 20, averaging 2.5 → 50, averaging 5 → 100. Keep this formula consistent.
 5. suggestions: Three specific improvement suggestions tied to the rubric.
 
 Question: {question}
@@ -230,11 +284,8 @@ Format your response as JSON:
 {{
     "strength_highlight": "1-2 sentences on what they did well",
     "feedback": "Strength first, then rubric-based feedback.",
-    "communication_score": <1-5>,
-    "technical_score": <1-5>,
-    "problem_solving_score": <1-5>,
-    "professional_tone_score": <1-5>,
-    "overall_score": <0-100>,
+{json_fields}
+    "overall_score": <0-100, must be average of dimension scores × 20>,
     "suggestions": ["suggestion1", "suggestion2", "suggestion3"]
 }}
 
@@ -245,26 +296,50 @@ Return ONLY valid JSON, no markdown formatting.
         
         try:
             result = json.loads(response)
-            # Ensure overall_score exists; derive from 1-5 scores if missing
-            if "overall_score" not in result or result["overall_score"] is None:
-                c = result.get("communication_score", 3)
-                t = result.get("technical_score", 3)
-                p = result.get("problem_solving_score", 3)
-                pr = result.get("professional_tone_score", 3)
-                result["overall_score"] = int(((c + t + p + pr) / 4) * 20)
+            # Always compute overall_score from dimension scores for consistency (same formula for all types)
+            if is_behavioral:
+                s = _score_1_5(result.get("situation_score"), 1)
+                t = _score_1_5(result.get("task_score"), 1)
+                a = _score_1_5(result.get("action_score"), 1)
+                r = _score_1_5(result.get("result_score"), 1)
+                result["overall_score"] = _overall_from_dimensions([s, t, a, r])
+            else:
+                c = _score_1_5(result.get("communication_score"), 1)
+                te = _score_1_5(result.get("technical_score"), 1)
+                p = _score_1_5(result.get("problem_solving_score"), 1)
+                pr = _score_1_5(result.get("professional_tone_score"), 1)
+                result["overall_score"] = _overall_from_dimensions([c, te, p, pr])
             return result
         except json.JSONDecodeError:
             first_line = response.split('\n')[0] if response else "Evaluation in progress."
-            return {
+            if is_behavioral:
+                fallback = {
+                    "strength_highlight": "You provided a complete STAR example with relevant context.",
+                    "feedback": first_line,
+                    "situation_score": 3,
+                    "task_score": 3,
+                    "action_score": 3,
+                    "result_score": 3,
+                    "situation_feedback": "The situation context is present, but could be clearer or more specific.",
+                    "task_feedback": "Your responsibility/challenge is addressed, but could be more explicit.",
+                    "action_feedback": "You describe actions, but could add more specific steps and details.",
+                    "result_feedback": "You share an outcome/lesson, but could add more concrete results or metrics.",
+                    "suggestions": ["Add more specific context", "Be clearer about your responsibility", "Include measurable outcomes"]
+                }
+                fallback["overall_score"] = _overall_from_dimensions([3, 3, 3, 3])
+                return fallback
+
+            fallback = {
                 "strength_highlight": "You provided a complete answer with relevant content.",
                 "feedback": first_line,
                 "communication_score": 3,
                 "technical_score": 3,
                 "problem_solving_score": 3,
                 "professional_tone_score": 3,
-                "overall_score": 60,
                 "suggestions": ["Practice more examples", "Be more specific", "Improve clarity"]
             }
+            fallback["overall_score"] = _overall_from_dimensions([3, 3, 3, 3])
+            return fallback
     
     def generate_followup_question(
         self,
@@ -322,6 +397,40 @@ Return ONLY valid JSON, no markdown formatting.
         """
         
         return self._invoke_model(prompt, system_prompt)
+
+    def extract_themes(self, texts: List[str], kind: str) -> List[str]:
+        """
+        Use Bedrock to extract 5 useful theme phrases (1-2 words each) from feedback text.
+        kind is 'strengths' or 'weaknesses'. Returns phrases that are actionable and meaningful
+        (e.g. "clear communication", "time management" not generic words like "missing" or "good").
+        """
+        if not texts or not any(t and t.strip() for t in texts):
+            return []
+        combined = "\n".join(t.strip() for t in texts if t and t.strip())[:6000]
+        system_prompt = (
+            "You are an expert career coach. You extract concise, useful theme labels from feedback. "
+            "Output only short phrases that would help the user understand their main strengths or areas to work on. "
+            "Use 1-2 words per theme. Prefer actionable terms (e.g. 'clear communication', 'code structure', 'time management'). "
+            "Avoid vague or unhelpful words like 'missing', 'good', 'need', 'better'. "
+            "Return exactly 5 themes, one per line, no numbering or bullets."
+        )
+        prompt = (
+            f"From the following {kind} feedback, identify the 5 most useful theme phrases (1-2 words each). "
+            "Each theme should be meaningful and actionable.\n\n"
+            f"Feedback:\n{combined}\n\n"
+            "List exactly 5 themes, one per line:"
+        )
+        try:
+            out = self._invoke_model(prompt, system_prompt)
+            themes = [
+                line.strip().strip(".-) ")
+                for line in (out or "").split("\n")
+                if line.strip()
+            ][:5]
+            return [t for t in themes if t]
+        except Exception as e:
+            logger.warning("Bedrock extract_themes failed: %s", e)
+            return []
 
 
 # Create a singleton instance
