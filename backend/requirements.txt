@@ -53,4 +53,4 @@ requests==2.32.3
 # Authentication and security
 python-jose[cryptography]==3.3.0  # JWT token handling
 bcrypt==3.2.2                    # Password hashing (passlib compatible)
-passlib[bcrypt]==1.7.4           # Password hashing library
+passlib[bcrypt]==1.7.4           # Password hashing libraryemail-validator
