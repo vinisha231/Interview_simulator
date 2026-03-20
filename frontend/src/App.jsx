@@ -118,7 +118,11 @@ export default function App() {
   const [expandedHistoryCell, setExpandedHistoryCell] = useState(null);
   const [showFullInterviewHistory, setShowFullInterviewHistory] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isFollowupListening, setIsFollowupListening] = useState(false);
+  const [speechRecognitionAvailable, setSpeechRecognitionAvailable] = useState(false);
   const recognitionRef = useRef(null);
+  const speechSessionBaseRef = useRef("");
+  const activeSpeechTargetRef = useRef("none"); // "none" | "main" | "followup"
   const visitRecordedForDateRef = useRef(null); // YYYY-MM-DD (local)
 
   // Timed interview state
@@ -167,28 +171,92 @@ export default function App() {
   }, [user]);
   
   useEffect(() => {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (SpeechRecognition) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
     const recognition = new SpeechRecognition();
     recognition.lang = "en-US";
     recognition.interimResults = true;
+    recognition.continuous = true;
 
     recognition.onresult = (event) => {
-      const results = Array.from(event.results);
-      const last = results[results.length - 1];
-      if (last.isFinal) {
-        const speechToText = results.map(r => r[0].transcript).join('').trim();
-        if (speechToText) {
-          setUserAnswer(prev => (prev ? prev + " " : "") + speechToText);
-        }
+      const target = activeSpeechTargetRef.current;
+      if (target === "none") return;
+      let transcript = "";
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
       }
+      const next = speechSessionBaseRef.current + transcript;
+      if (target === "main") setUserAnswer(next);
+      else if (target === "followup") setFollowupAnswer(next);
     };
 
-    recognition.onend = () => setIsListening(false);
+    recognition.onend = () => {
+      if (activeSpeechTargetRef.current === "main") setIsListening(false);
+      else if (activeSpeechTargetRef.current === "followup") setIsFollowupListening(false);
+      activeSpeechTargetRef.current = "none";
+    };
+
+    recognition.onerror = () => {
+      try {
+        recognition.stop();
+      } catch {
+        /* ignore */
+      }
+      setIsListening(false);
+      setIsFollowupListening(false);
+      activeSpeechTargetRef.current = "none";
+    };
 
     recognitionRef.current = recognition;
-  }
-}, []);
+    setSpeechRecognitionAvailable(true);
+  }, []);
+
+  const startSpeechForTarget = (target, baseText) => {
+    const rec = recognitionRef.current;
+    if (!rec || activeSpeechTargetRef.current !== "none") return;
+    try {
+      speechSessionBaseRef.current = baseText ?? "";
+      activeSpeechTargetRef.current = target;
+      rec.continuous = true;
+      rec.interimResults = true;
+      if (target === "main") setIsListening(true);
+      else setIsFollowupListening(true);
+      rec.start();
+    } catch (e) {
+      console.warn("Speech recognition start failed", e);
+      activeSpeechTargetRef.current = "none";
+      setIsListening(false);
+      setIsFollowupListening(false);
+    }
+  };
+
+  const stopSpeech = () => {
+    const rec = recognitionRef.current;
+    if (!rec || activeSpeechTargetRef.current === "none") return;
+    try {
+      rec.stop();
+    } catch (e) {
+      console.warn("Speech recognition stop failed", e);
+      setIsListening(false);
+      setIsFollowupListening(false);
+      activeSpeechTargetRef.current = "none";
+    }
+  };
+
+  const abortSpeechSession = () => {
+    const rec = recognitionRef.current;
+    if (rec && activeSpeechTargetRef.current !== "none") {
+      try {
+        rec.abort();
+      } catch {
+        /* ignore */
+      }
+    }
+    setIsListening(false);
+    setIsFollowupListening(false);
+    activeSpeechTargetRef.current = "none";
+  };
 
   useEffect(() => {
     document.body.classList.remove("theme-dark", "theme-light");
@@ -260,6 +328,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    abortSpeechSession();
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setUser(null);
@@ -293,6 +362,7 @@ export default function App() {
   };
 
   const resetInterview = () => {
+    abortSpeechSession();
     setInterviewType(null);
     setCurrentQuestion("");
     setUserAnswer("");
@@ -345,6 +415,7 @@ export default function App() {
       alert("Please enter a role to practice for.");
       return;
     }
+    abortSpeechSession();
     setIsLoading(true);
     setInterviewType(type);
     setConversation([]);
@@ -390,6 +461,7 @@ export default function App() {
       return;
     }
 
+    abortSpeechSession();
     setIsLoading(true);
     
     try {
@@ -428,7 +500,11 @@ export default function App() {
         setFollowupFeedback("");
         setFollowupScore(null);
 
-        if (interviewType === "behavioral" || interviewType === "design") {
+        if (
+          interviewType === "behavioral" ||
+          interviewType === "design" ||
+          interviewType === "technical"
+        ) {
           try {
             const followupResponse = await fetch(apiUrl("/api/interview/followup"), {
               method: "POST",
@@ -486,6 +562,7 @@ export default function App() {
   };
 
   const nextQuestion = async () => {
+    abortSpeechSession();
     setIsLoading(true);
     setFeedback("");
     setScore(null);
@@ -535,6 +612,7 @@ export default function App() {
       return;
     }
 
+    abortSpeechSession();
     setIsLoading(true);
     try {
       const token = localStorage.getItem("token");
@@ -1223,6 +1301,7 @@ export default function App() {
       alert("Please provide an answer before submitting.");
       return;
     }
+    abortSpeechSession();
     const questionStart = timedQuestionStartAt != null ? timedQuestionStartAt : Date.now();
     const timeSpentThisQuestion = Math.round((Date.now() - questionStart) / 1000);
     setIsLoading(true);
@@ -1850,25 +1929,31 @@ export default function App() {
             userAnswer={userAnswer}
             setUserAnswer={setUserAnswer}
             submitAnswer={submitTimedAnswer}
-            isListening={isListening}
-            setIsListening={setIsListening}
-            recognitionRef={recognitionRef}
             isLoading={isLoading}
             isTechnical={interviewType === "technical"}
             programmingLanguage={language}
             inputDisabled={timeExpired}
+            showSpeechControls={interviewType !== "technical"}
+            speechRecognitionAvailable={speechRecognitionAvailable}
+            isSpeechListening={isListening}
+            isOtherSpeechActive={isFollowupListening}
+            onStartSpeaking={() => startSpeechForTarget("main", userAnswer)}
+            onStopSpeaking={stopSpeech}
           />
         ) : !feedback ? (
           <TechnicalInterviewBox
             userAnswer={userAnswer}
             setUserAnswer={setUserAnswer}
             submitAnswer={submitAnswer}
-            isListening={isListening}
-            setIsListening={setIsListening}
-            recognitionRef={recognitionRef}
             isLoading={isLoading}
             isTechnical={interviewType === "technical"}
             programmingLanguage={language}
+            showSpeechControls={interviewType !== "technical"}
+            speechRecognitionAvailable={speechRecognitionAvailable}
+            isSpeechListening={isListening}
+            isOtherSpeechActive={isFollowupListening}
+            onStartSpeaking={() => startSpeechForTarget("main", userAnswer)}
+            onStopSpeaking={stopSpeech}
           />
         ) : (
           <div className={`answer-section ${interviewType === "technical" ? "ide-answer" : ""}`}>
@@ -1913,13 +1998,19 @@ export default function App() {
               </div>
             )}
             {renderStarBreakdown(starBreakdown?.scores, starBreakdown?.feedback)}
-            {followupQuestion && (interviewType === "behavioral" || interviewType === "design") && (
+            {followupQuestion &&
+              (interviewType === "behavioral" ||
+                interviewType === "design" ||
+                interviewType === "technical") && (
               <div className="question-box">
                 <h4>Follow-up Question:</h4>
                 <p>{followupQuestion}</p>
               </div>
             )}
-            {followupQuestion && (interviewType === "behavioral" || interviewType === "design") && (
+            {followupQuestion &&
+              (interviewType === "behavioral" ||
+                interviewType === "design" ||
+                interviewType === "technical") && (
               <div className="answer-section">
                 <h4>Your Follow-up Answer:</h4>
                 <textarea
@@ -1927,8 +2018,26 @@ export default function App() {
                   onChange={(e) => setFollowupAnswer(e.target.value)}
                   placeholder="Answer the follow-up question..."
                   rows={6}
-                  disabled={isLoading}
+                  disabled={isLoading || isFollowupListening}
                 />
+                {speechRecognitionAvailable && (
+                  <div style={{ margin: "10px 0" }}>
+                    {!isFollowupListening ? (
+                      <button
+                        type="button"
+                        onClick={() => startSpeechForTarget("followup", followupAnswer)}
+                        disabled={isLoading || isListening}
+                        className="submit-btn"
+                      >
+                        Start Speaking
+                      </button>
+                    ) : (
+                      <button type="button" onClick={stopSpeech} className="submit-btn">
+                        Stop Speaking
+                      </button>
+                    )}
+                  </div>
+                )}
                 <div className="session-notes-section followup-notes">
                   <h4>Session Notes (for follow-up)</h4>
                   <textarea

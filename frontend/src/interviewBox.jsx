@@ -17,13 +17,16 @@ export default function TechnicalInterviewBox({
   userAnswer,
   setUserAnswer,
   submitAnswer,
-  isListening,
-  setIsListening,
-  recognitionRef,
   isLoading,
   isTechnical,
   programmingLanguage = "Python",
   inputDisabled = false,
+  showSpeechControls = true,
+  speechRecognitionAvailable = false,
+  isSpeechListening = false,
+  isOtherSpeechActive = false,
+  onStartSpeaking,
+  onStopSpeaking,
 }) {
   const disabled = isLoading || inputDisabled;
   const solutionFileName = isTechnical
@@ -33,6 +36,8 @@ export default function TechnicalInterviewBox({
     () => Math.max(1, userAnswer.split("\n").length),
     [userAnswer]
   );
+  const canShowSpeech =
+    showSpeechControls && speechRecognitionAvailable && onStartSpeaking && onStopSpeaking;
 
   return (
     <div className={`answer-section ${isTechnical ? "ide-answer" : ""}`}>
@@ -80,20 +85,29 @@ export default function TechnicalInterviewBox({
           disabled={disabled}
         />
       )}
-      <div style={{ margin: '10px 0' }}>
-        <button
-          onClick={() => {
-            if (recognitionRef.current) {
-              recognitionRef.current.start();
-              setIsListening(true);
-            }
-          }}
-          disabled={isListening || disabled}
-          className="submit-btn"
-        >
-          {isListening ? "Listening..." : "Start Speaking"}
-        </button>
-      </div>
+      {canShowSpeech && (
+        <div style={{ margin: '10px 0' }}>
+          {!isSpeechListening ? (
+            <button
+              type="button"
+              onClick={onStartSpeaking}
+              disabled={disabled || isOtherSpeechActive}
+              className="submit-btn"
+            >
+              Start Speaking
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onStopSpeaking}
+              disabled={disabled}
+              className="submit-btn"
+            >
+              Stop Speaking
+            </button>
+          )}
+        </div>
+      )}
       <button 
         onClick={submitAnswer}
         disabled={disabled || !userAnswer.trim()}
