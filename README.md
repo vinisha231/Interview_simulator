@@ -67,6 +67,19 @@ From project root, build the frontend into `backend/app/static` and deploy the b
 
 The UI uses same-origin `/api/...` calls (`VITE_API_BASE_URL` empty in that build).
 
+Set **`DATABASE_URL`** in the EB environment (Configuration → Software → Environment properties) to your **RDS** PostgreSQL URL. Each deploy runs `alembic upgrade head` in the container entrypoint.
+
+**Migrations stuck (tables missing but older tables exist):** If the DB was created without Alembic (or `alembic_version` is empty while `users` / `interview_sessions` already exist), `upgrade head` from scratch fails with “already exists”. Fix once from your laptop (same `DATABASE_URL` as EB):
+
+```bash
+cd backend
+export DATABASE_URL='postgresql://...'   # RDS URL from EB
+alembic stamp b2c3d4e5f6a7   # last revision before daily_visits + calendar; adjust if your schema differs
+alembic upgrade head
+```
+
+Then confirm `user_daily_visits` and `user_calendar_events` exist. Redeploy afterward so future upgrades apply normally.
+
 ## Azure
 
 - **App Service**: Connect repo, set startup command `python startup.py`, set `PORT=8000` and other env vars.

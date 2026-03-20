@@ -81,7 +81,8 @@ def _event_to_item(e: UserCalendarEvent) -> dict:
 
 _MISSING_TABLE_MSG = (
     "Calendar events table is missing on the database. "
-    "Set DATABASE_URL on the server and run: alembic upgrade head (or redeploy after migrations)."
+    "Ensure DATABASE_URL on the server points to RDS and redeploy (container runs alembic upgrade head). "
+    "If other tables exist but calendar does not, the DB may need a one-time alembic stamp then upgrade — see README."
 )
 
 
