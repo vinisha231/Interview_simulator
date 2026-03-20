@@ -801,7 +801,7 @@ export default function App() {
           })
         });
         void fetchDailyLogData();
-        fetchCalendarMonth(calendarYear, calendarMonth);
+        refreshCalendarData(calendarYear, calendarMonth);
       } else {
         alert("Failed to evaluate answer. Please try again.");
       }
@@ -918,7 +918,7 @@ export default function App() {
           })
         });
         void fetchDailyLogData();
-        fetchCalendarMonth(calendarYear, calendarMonth);
+        refreshCalendarData(calendarYear, calendarMonth);
       } else {
         alert("Failed to evaluate follow-up answer. Please try again.");
       }
@@ -1062,62 +1062,62 @@ export default function App() {
     }
   };
 
-  const fetchCalendarMonth = async (year, month) => {
+  /** Load practice days + scheduled events together; partial success so one API failing doesn’t blank the other. */
+  const refreshCalendarData = async (year, month) => {
     setCalendarLoading(true);
     setCalendarError("");
     try {
       const token = localStorage.getItem("token");
       if (!token) {
         setCalendarVisitedDates([]);
+        setCalendarEventsByDate({});
         return;
       }
-
       const tzOffset = new Date().getTimezoneOffset();
-      const res = await fetch(apiUrl(`/api/activity/calendar?year=${year}&month=${month}&tz_offset_minutes=${tzOffset}`), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const headers = { Authorization: `Bearer ${token}` };
+      const [actRes, evRes] = await Promise.all([
+        fetch(
+          apiUrl(`/api/activity/calendar?year=${year}&month=${month}&tz_offset_minutes=${tzOffset}`),
+          { headers },
+        ),
+        fetch(apiUrl(`/api/calendar/events?year=${year}&month=${month}`), { headers }),
+      ]);
 
-      if (res.status === 401) {
+      if (actRes.status === 401 || evRes.status === 401) {
         setCalendarError("Session expired. Please log in again.");
         handleLogout();
         return;
       }
 
-      const { data, raw } = await readApiJson(res);
-      if (!res.ok) {
-        throw new Error(messageFromFailedResponse(res, data, raw));
+      const actParsed = await readApiJson(actRes);
+      const evParsed = await readApiJson(evRes);
+      const errs = [];
+
+      if (!actRes.ok) {
+        errs.push(messageFromFailedResponse(actRes, actParsed.data, actParsed.raw));
+        setCalendarVisitedDates([]);
+      } else {
+        setCalendarVisitedDates(
+          Array.isArray(actParsed.data?.visited_dates) ? actParsed.data.visited_dates : [],
+        );
       }
-      setCalendarVisitedDates(Array.isArray(data?.visited_dates) ? data.visited_dates : []);
+
+      if (!evRes.ok) {
+        errs.push(messageFromFailedResponse(evRes, evParsed.data, evParsed.raw));
+        setCalendarEventsByDate({});
+      } else {
+        setCalendarEventsByDate(evParsed.data?.events_by_date || {});
+      }
+
+      if (errs.length) {
+        setCalendarError(errs.filter(Boolean).join(" — "));
+      }
     } catch (e) {
       setCalendarError(e.message || "Could not load calendar");
       setCalendarVisitedDates([]);
+      setCalendarEventsByDate({});
     } finally {
       setCalendarLoading(false);
-    }
-  };
-
-  const fetchCalendarEvents = async (year, month) => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setCalendarEventsByDate({});
-        return;
-      }
-      const res = await fetch(apiUrl(`/api/calendar/events?year=${year}&month=${month}`), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.status === 401) return;
-      const { data, raw } = await readApiJson(res);
-      if (!res.ok) {
-        const msg = messageFromFailedResponse(res, data, raw);
-        setCalendarError((prev) => prev || msg);
-        setCalendarEventsByDate({});
-        return;
-      }
-      setCalendarEventsByDate((data && data.events_by_date) || {});
-    } catch (e) {
-      setCalendarError((prev) => prev || e.message || "Could not load calendar events.");
-      setCalendarEventsByDate({});
     }
   };
 
@@ -1197,7 +1197,7 @@ export default function App() {
         if (!res.ok) throw new Error(messageFromFailedResponse(res, data, raw));
       }
       closeCalendarEventModal();
-      fetchCalendarEvents(calendarYear, calendarMonth);
+      refreshCalendarData(calendarYear, calendarMonth);
     } catch (e) {
       setCalendarEventError(e.message || "Failed to save");
     } finally {
@@ -1218,7 +1218,7 @@ export default function App() {
       });
       if (!res.ok) throw new Error("Failed to delete event");
       closeCalendarEventModal();
-      fetchCalendarEvents(calendarYear, calendarMonth);
+      refreshCalendarData(calendarYear, calendarMonth);
     } catch (e) {
       setCalendarEventError(e.message || "Failed to delete");
     } finally {
@@ -1320,8 +1320,7 @@ export default function App() {
 
   useEffect(() => {
     if (currentView === "calendar" && user) {
-      fetchCalendarMonth(calendarYear, calendarMonth);
-      fetchCalendarEvents(calendarYear, calendarMonth);
+      refreshCalendarData(calendarYear, calendarMonth);
     }
   }, [currentView, user, calendarYear, calendarMonth]);
 
@@ -1434,7 +1433,7 @@ export default function App() {
               }),
             });
             void fetchDailyLogData();
-            fetchCalendarMonth(calendarYear, calendarMonth);
+            refreshCalendarData(calendarYear, calendarMonth);
           } else {
             finalResponses = [
               ...ref.timedResponses,
@@ -1628,7 +1627,7 @@ export default function App() {
           }),
         });
         void fetchDailyLogData();
-        fetchCalendarMonth(calendarYear, calendarMonth);
+        refreshCalendarData(calendarYear, calendarMonth);
         const nextIndex = timedQuestionIndex + 1;
         if (nextIndex >= TIMED_QUESTIONS_COUNT) {
           if (timerIntervalRef.current) {

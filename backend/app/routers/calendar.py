@@ -2,7 +2,7 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy.exc import ProgrammingError, OperationalError, SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
@@ -80,20 +80,18 @@ def _event_to_item(e: UserCalendarEvent) -> dict:
 
 
 _MISSING_TABLE_MSG = (
-    "Calendar is not initialized on the server database. "
-    "SSH into the backend host and run: alembic upgrade head"
+    "Calendar events table is missing on the database. "
+    "Set DATABASE_URL on the server and run: alembic upgrade head (or redeploy after migrations)."
 )
 
 
 def _reraise_calendar_db(db: Session, exc: Exception) -> None:
-    """Map missing table / DB errors to a clear 503 for operators."""
+    """Only remap clear 'relation does not exist' errors; other DB errors propagate."""
     db.rollback()
     err = str(getattr(exc, "orig", None) or exc).lower()
     if "user_calendar_events" in err or (
         "relation" in err and "does not exist" in err
     ):
-        raise HTTPException(status_code=503, detail=_MISSING_TABLE_MSG) from exc
-    if isinstance(exc, (ProgrammingError, OperationalError)):
         raise HTTPException(status_code=503, detail=_MISSING_TABLE_MSG) from exc
     raise
 
