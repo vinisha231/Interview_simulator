@@ -16,8 +16,9 @@ Author: LLM Interview Simulator Team
 """
 
 # Import necessary libraries
-from fastapi import FastAPI  # FastAPI framework for building APIs
+from fastapi import FastAPI, HTTPException  # FastAPI framework for building APIs
 from fastapi.middleware.cors import CORSMiddleware  # Middleware for handling CORS
+from fastapi.responses import FileResponse
 from app.routers import interview, sessions, dashboard, auth, activity, calendar  # Import all routers
 import os  # For environment variables
 from dotenv import load_dotenv  # For loading .env files
@@ -61,21 +62,20 @@ app.include_router(dashboard.router)
 app.include_router(activity.router)
 app.include_router(calendar.router)
 
+# Built React app (production): scripts/build-eb-frontend.sh copies Vite dist here
+_STATIC_DIR = _backend_root / "app" / "static"
+
+
 # Define the root endpoint
 # This is the first endpoint users will hit when they visit our API
 @app.get("/")
 def root():
     """
-    Root endpoint - returns a welcome message and health status.
-    
-    This endpoint:
-    - Responds to GET requests at the root URL (/)
-    - Returns a JSON response with a welcome message
-    - Shows that the backend is running successfully
-    
-    Returns:
-        dict: A dictionary containing welcome message and status
+    Serves the SPA when static assets are deployed; otherwise JSON for API-only installs.
     """
+    index = _STATIC_DIR / "index.html"
+    if index.is_file():
+        return FileResponse(index)
     return {"message": "Backend running successfully 🚀", "status": "healthy"}
 
 # Define a dedicated health check endpoint
@@ -94,6 +94,28 @@ def health_check():
         dict: A dictionary containing the service status
     """
     return {"status": "healthy", "service": "LLM Interview Simulator API"}
+
+
+@app.get("/{full_path:path}")
+def serve_frontend(full_path: str):
+    """
+    Static files from the Vite build and SPA fallback. API routes live under /api and
+    are registered above, so they take precedence.
+    """
+    index = _STATIC_DIR / "index.html"
+    if not index.is_file():
+        raise HTTPException(status_code=404, detail="Not found")
+    if full_path.split("/")[0] == "api":
+        raise HTTPException(status_code=404, detail="Not found")
+    try:
+        candidate = (_STATIC_DIR / full_path).resolve()
+        candidate.relative_to(_STATIC_DIR.resolve())
+    except ValueError:
+        return FileResponse(index)
+    if candidate.is_file():
+        return FileResponse(candidate)
+    return FileResponse(index)
+
 
 # Azure-compatible entry point
 # This code runs when the script is executed directly (not imported)

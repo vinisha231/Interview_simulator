@@ -57,6 +57,16 @@ docker build -f backend/Dockerfile -t llm-interview-simulator .
 docker run -p 8000:8000 llm-interview-simulator
 ```
 
+## Elastic Beanstalk (API + React from one URL)
+
+From project root, build the frontend into `backend/app/static` and deploy the backend:
+
+```bash
+./scripts/deploy-eb-fullstack.sh
+```
+
+The UI uses same-origin `/api/...` calls (`VITE_API_BASE_URL` empty in that build).
+
 ## Azure
 
 - **App Service**: Connect repo, set startup command `python startup.py`, set `PORT=8000` and other env vars.

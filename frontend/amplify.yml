@@ -1,5 +1,9 @@
 version: 1
 frontend:
+  environment:
+    variables:
+      # Backend API (Elastic Beanstalk). Override in Amplify Console if your EB URL differs.
+      VITE_API_BASE_URL: http://interview-env.eba-tub4ts7k.us-east-1.elasticbeanstalk.com
   phases:
     preBuild:
       commands:

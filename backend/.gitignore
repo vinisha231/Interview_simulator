@@ -1,3 +1,5 @@
+# Vite production bundle copied here before `eb deploy` (see scripts/build-eb-frontend.sh)
+app/static/
 
 # Elastic Beanstalk Files
 .elasticbeanstalk/*
