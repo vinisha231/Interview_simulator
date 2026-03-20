@@ -57,6 +57,200 @@ function toLocalISODate(d) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+const CLARIFY_INTRO =
+  "What questions do you have about the question? I can clarify what it's asking — I won't give away the solution. This chat is not graded.";
+
+function ClarifyChatIcon() {
+  return (
+    <svg
+      className="clarify-chat-svg"
+      viewBox="0 0 24 24"
+      width="22"
+      height="22"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6l-4 4V6a2 2 0 0 1 2-2zm0 2v13.17L5.17 16H20V6H4zm2 3h12v2H6V9zm0 3h8v2H6v-2zm0 3h10v2H6v-2z"
+      />
+    </svg>
+  );
+}
+
+function QuestionClarifyCTA({ onOpen, isFollowUp }) {
+  return (
+    <div className="question-clarify-cta-row">
+      <button
+        type="button"
+        className="question-clarify-cta"
+        onClick={onOpen}
+        aria-label={
+          isFollowUp
+            ? "Open chat to clarify the follow-up question"
+            : "Open chat to clarify the interview question"
+        }
+      >
+        <ClarifyChatIcon />
+        <span className="question-clarify-cta-text">
+          {isFollowUp
+            ? "Clarify this follow-up (not graded)"
+            : "Clarify this question (not graded)"}
+        </span>
+      </button>
+    </div>
+  );
+}
+
+function QuestionClarifyModal({
+  isOpen,
+  onClose,
+  questionText,
+  interviewType,
+  messages,
+  setMessages,
+  input,
+  setInput,
+  loading,
+  setLoading,
+  disabled,
+  modalTitle = "Ask the interviewer",
+}) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen || !String(questionText || "").trim()) return null;
+
+  const send = async () => {
+    const trimmed = input.trim();
+    if (!trimmed || loading || disabled) return;
+    const token = localStorage.getItem("token");
+    const historyPayload = messages.map((m) => ({ role: m.role, content: m.content }));
+    setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
+    setInput("");
+    setLoading(true);
+    try {
+      const res = await fetch(apiUrl("/api/interview/clarify-question"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          question: questionText,
+          message: trimmed,
+          interview_type: interviewType || "technical",
+          conversation: historyPayload,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const detail = data.detail;
+        const msg =
+          typeof detail === "string"
+            ? detail
+            : Array.isArray(detail) && detail[0]?.msg
+              ? detail[0].msg
+              : "Request failed";
+        throw new Error(msg);
+      }
+      const reply = data.reply || "Sorry, no response.";
+      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+    } catch (e) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: e.message || "Something went wrong. Try again." },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      className="question-clarify-modal-root"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="clarify-modal-title"
+    >
+      <button
+        type="button"
+        className="question-clarify-modal-backdrop"
+        aria-label="Close dialog"
+        onClick={onClose}
+      />
+      <div className="question-clarify-modal-panel">
+        <div className="question-clarify-modal-header">
+          <h3 id="clarify-modal-title">{modalTitle}</h3>
+          <button
+            type="button"
+            className="question-clarify-modal-close"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <p className="question-clarify-modal-disclaimer">
+          Not graded. The assistant clarifies the prompt only — <strong>no full answers or solutions</strong>.
+        </p>
+        <div className="question-clarify-messages question-clarify-messages--modal">
+          <div className="question-clarify-bubble question-clarify-bubble-assistant question-clarify-intro-bubble">
+            {CLARIFY_INTRO}
+          </div>
+          {messages.map((m, i) => (
+            <div
+              key={i}
+              className={`question-clarify-bubble question-clarify-bubble-${m.role}`}
+            >
+              {m.content}
+            </div>
+          ))}
+          {loading && (
+            <div className="question-clarify-bubble question-clarify-bubble-assistant">
+              …
+            </div>
+          )}
+        </div>
+        <div className="question-clarify-input-row">
+          <textarea
+            className="question-clarify-textarea"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send();
+              }
+            }}
+            placeholder="Type your question… (Enter to send, Shift+Enter for new line)"
+            rows={2}
+            disabled={disabled || loading}
+          />
+          <button
+            type="button"
+            className="submit-btn question-clarify-send"
+            onClick={send}
+            disabled={disabled || loading || !input.trim()}
+          >
+            Send
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [authView, setAuthView] = useState("login");
@@ -124,6 +318,15 @@ export default function App() {
   const speechSessionBaseRef = useRef("");
   const activeSpeechTargetRef = useRef("none"); // "none" | "main" | "followup"
   const visitRecordedForDateRef = useRef(null); // YYYY-MM-DD (local)
+
+  const [clarifyMainOpen, setClarifyMainOpen] = useState(false);
+  const [clarifyMainMessages, setClarifyMainMessages] = useState([]);
+  const [clarifyMainInput, setClarifyMainInput] = useState("");
+  const [clarifyMainLoading, setClarifyMainLoading] = useState(false);
+  const [clarifyFollowupOpen, setClarifyFollowupOpen] = useState(false);
+  const [clarifyFollowupMessages, setClarifyFollowupMessages] = useState([]);
+  const [clarifyFollowupInput, setClarifyFollowupInput] = useState("");
+  const [clarifyFollowupLoading, setClarifyFollowupLoading] = useState(false);
 
   // Timed interview state
   const [showTimedSetup, setShowTimedSetup] = useState(false);
@@ -264,6 +467,20 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
+    setClarifyMainMessages([]);
+    setClarifyMainInput("");
+    setClarifyMainOpen(false);
+    setClarifyMainLoading(false);
+  }, [currentQuestion]);
+
+  useEffect(() => {
+    setClarifyFollowupMessages([]);
+    setClarifyFollowupInput("");
+    setClarifyFollowupOpen(false);
+    setClarifyFollowupLoading(false);
+  }, [followupQuestion]);
+
+  useEffect(() => {
     if (!user) {
       return;
     }
@@ -363,6 +580,14 @@ export default function App() {
 
   const resetInterview = () => {
     abortSpeechSession();
+    setClarifyMainOpen(false);
+    setClarifyMainMessages([]);
+    setClarifyMainInput("");
+    setClarifyMainLoading(false);
+    setClarifyFollowupOpen(false);
+    setClarifyFollowupMessages([]);
+    setClarifyFollowupInput("");
+    setClarifyFollowupLoading(false);
     setInterviewType(null);
     setCurrentQuestion("");
     setUserAnswer("");
@@ -1919,8 +2144,20 @@ export default function App() {
             <span className="meta-pill">{interviewType}</span>
             <span className="meta-pill">{difficulty}</span>
           </div>
-          <div className="question-box">
-            <p>{currentQuestion}</p>
+          <div className="question-box question-box-with-clarify">
+            <div className="question-box-head">
+              <p className="question-box-text">{currentQuestion}</p>
+              <button
+                type="button"
+                className="question-clarify-fab"
+                onClick={() => setClarifyMainOpen(true)}
+                aria-label="Open chat: ask about this question"
+                title="Ask about this question (not graded)"
+              >
+                <ClarifyChatIcon />
+              </button>
+            </div>
+            <QuestionClarifyCTA onOpen={() => setClarifyMainOpen(true)} isFollowUp={false} />
           </div>
         </div>
 
@@ -1981,6 +2218,18 @@ export default function App() {
             <div className="score-display">
               <span className="score">Score: {score}%</span>
             </div>
+            {currentQuestion && (
+              <div className="question-clarify-entry-bar">
+                <button
+                  type="button"
+                  className="question-clarify-entry-btn"
+                  onClick={() => setClarifyMainOpen(true)}
+                >
+                  <ClarifyChatIcon />
+                  <span>Questions about the interview question?</span>
+                </button>
+              </div>
+            )}
             {interviewType === "behavioral" ? (
               <div className="feedback-split">
                 <div className="feedback-box">
@@ -2002,9 +2251,23 @@ export default function App() {
               (interviewType === "behavioral" ||
                 interviewType === "design" ||
                 interviewType === "technical") && (
-              <div className="question-box">
-                <h4>Follow-up Question:</h4>
-                <p>{followupQuestion}</p>
+              <div className="question-box question-box-with-clarify">
+                <div className="question-box-head question-box-head--followup">
+                  <div className="question-box-followup-title">
+                    <h4>Follow-up Question:</h4>
+                    <p className="question-box-text">{followupQuestion}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="question-clarify-fab"
+                    onClick={() => setClarifyFollowupOpen(true)}
+                    aria-label="Open chat: ask about this follow-up"
+                    title="Ask about this follow-up (not graded)"
+                  >
+                    <ClarifyChatIcon />
+                  </button>
+                </div>
+                <QuestionClarifyCTA onOpen={() => setClarifyFollowupOpen(true)} isFollowUp />
               </div>
             )}
             {followupQuestion &&
@@ -2094,6 +2357,36 @@ export default function App() {
             </div>
           </div>
         )}
+        <QuestionClarifyModal
+          isOpen={clarifyMainOpen}
+          onClose={() => setClarifyMainOpen(false)}
+          questionText={currentQuestion}
+          interviewType={interviewType}
+          messages={clarifyMainMessages}
+          setMessages={setClarifyMainMessages}
+          input={clarifyMainInput}
+          setInput={setClarifyMainInput}
+          loading={clarifyMainLoading}
+          setLoading={setClarifyMainLoading}
+          disabled={isLoading}
+          modalTitle="Ask about this question"
+        />
+        {followupQuestion ? (
+          <QuestionClarifyModal
+            isOpen={clarifyFollowupOpen}
+            onClose={() => setClarifyFollowupOpen(false)}
+            questionText={followupQuestion}
+            interviewType={interviewType}
+            messages={clarifyFollowupMessages}
+            setMessages={setClarifyFollowupMessages}
+            input={clarifyFollowupInput}
+            setInput={setClarifyFollowupInput}
+            loading={clarifyFollowupLoading}
+            setLoading={setClarifyFollowupLoading}
+            disabled={isLoading}
+            modalTitle="Ask about the follow-up"
+          />
+        ) : null}
       </div>
     );
   };

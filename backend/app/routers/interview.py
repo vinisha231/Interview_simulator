@@ -183,6 +183,11 @@ LEETCODE_STYLE_GENERAL = {
     ],
 }
 
+# Shorter than a full essay, but gives candidates clear deliverables (technical bank questions only).
+TECHNICAL_QUESTION_CONTEXT = """
+
+What to include in your answer: (1) your understanding of the problem, (2) approach and why it works, (3) pseudocode or code, (4) a small example or trace if helpful, (5) edge cases, (6) time and space complexity (Big-O) with a one-line justification each."""
+
 # Define the structure of data we expect to receive
 class InterviewRequest(BaseModel):
     """
@@ -210,6 +215,15 @@ class FollowupRequest(BaseModel):
     role: Optional[str] = None
     company: Optional[str] = None
     history: Optional[List[dict]] = None
+
+
+class ClarifyQuestionRequest(BaseModel):
+    """Free-form questions about the prompt; assistant clarifies without grading or giving the solution."""
+
+    question: str
+    message: str
+    interview_type: Optional[str] = "technical"
+    conversation: Optional[List[dict]] = None  # prior turns: {"role": "user"|"assistant", "content": "..."}
 
 # Define the structure of data we send back to the client
 class InterviewResponse(BaseModel):
@@ -287,7 +301,7 @@ async def generate_question(
             bank = LEETCODE_STYLE_QUESTIONS[company_key].get(diff_key, LEETCODE_STYLE_GENERAL[diff_key])
         else:
             bank = LEETCODE_STYLE_GENERAL.get(diff_key, LEETCODE_STYLE_GENERAL["medium"])
-        question = random.choice(bank)
+        question = random.choice(bank).strip() + TECHNICAL_QUESTION_CONTEXT
         return {
             "question": question,
             "interview_type": interview_type,
@@ -410,14 +424,19 @@ async def evaluate_answer(request: InterviewRequest):
     normalized_type = (request.interview_type or "technical").lower()
 
     if is_low_quality_answer(request.user_answer, request.interview_type):
+        # Harsh floor for technical/design: effectively no score until they answer substantively.
+        harsh_score = 1 if normalized_type in ("technical", "design") else 8
         return InterviewResponse(
-            feedback="Your answer is too short or unclear to evaluate. Please provide a complete, specific response.",
-            score=20,
+            feedback="Your answer is too short or unclear to evaluate meaningfully against this question. "
+            "Provide a structured response that directly addresses the prompt (approach, code or pseudocode, "
+            "example trace, edge cases, and complexity where applicable).",
+            score=harsh_score,
             suggestions=[
-                "Answer in full sentences with concrete details.",
-                "Explain your reasoning step-by-step.",
-                "Stay focused on the question asked."
+                "Re-read the full question and answer each part explicitly.",
+                "Explain your approach before code; then state time and space complexity.",
+                "Stay on-topic—unrelated or one-line replies cannot receive credit.",
             ],
+            strength_highlight="No substantive answer was provided to evaluate.",
             star_scores=None,
             star_feedback=None,
         )
@@ -496,6 +515,39 @@ async def followup_question(request: FollowupRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating follow-up question: {str(e)}")
+
+
+@router.post("/clarify-question")
+async def clarify_question(request: ClarifyQuestionRequest):
+    """
+    Chat about the interview question (any clarification). Not graded; responses must not solve the problem.
+    """
+    if not (request.message or "").strip():
+        raise HTTPException(status_code=400, detail="message is required")
+    if not (request.question or "").strip():
+        raise HTTPException(status_code=400, detail="question is required")
+    try:
+        raw_history = request.conversation or []
+        history: List[Dict[str, str]] = []
+        for turn in raw_history[-12:]:
+            if not isinstance(turn, dict):
+                continue
+            role = str(turn.get("role") or "").strip().lower()
+            content = str(turn.get("content") or "").strip()
+            if role not in ("user", "assistant") or not content:
+                continue
+            history.append({"role": role, "content": content})
+        bedrock = get_bedrock_service()
+        reply = bedrock.clarify_interview_question(
+            interview_question=request.question,
+            user_message=request.message.strip(),
+            interview_type=request.interview_type or "technical",
+            conversation=history,
+        )
+        return {"reply": (reply or "").strip() or "I couldn’t clarify that just now—try rephrasing your question."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error clarifying question: {str(e)}")
+
 
 # Define an endpoint to get available interview types
 @router.get("/types")
