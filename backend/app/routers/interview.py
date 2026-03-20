@@ -26,167 +26,12 @@ import re
 
 # Import Bedrock service
 from app.services.bedrock_service import get_bedrock_service
+from app.routers.leetcode_question_bank import LEETCODE_STYLE_GENERAL, LEETCODE_STYLE_QUESTIONS
 
 # Create a router for interview-related endpoints
 # prefix="/api/interview" means all routes will start with /api/interview/
 # tags=["interview"] groups these endpoints in the API documentation
 router = APIRouter(prefix="/api/interview", tags=["interview"])
-
-# LeetCode-style coding question bank by company and difficulty (questions that require code)
-# Based on commonly asked problems at these companies. Use for technical interviews.
-LEETCODE_STYLE_QUESTIONS = {
-    "google": {
-        "easy": [
-            "Two Sum: Given an array of integers and a target, return indices of the two numbers that add up to the target. Assume exactly one solution. Write the function signature and implement it.",
-            "Valid Parentheses: Given a string containing only '(', ')', '{', '}', '[' and ']', determine if the input is valid (open brackets closed in correct order). Write code to solve this.",
-            "Merge Two Sorted Lists: Given the heads of two sorted linked lists, merge them into one sorted list. Return the head of the merged list. Implement the solution.",
-            "Reverse a linked list. Write a function that takes the head node and returns the new head.",
-            "Implement a function to check if a string is a palindrome. Ignore non-alphanumeric characters and case.",
-        ],
-        "medium": [
-            "Longest Substring Without Repeating Characters: Given a string, find the length of the longest substring without repeating characters. Implement and state time/space complexity.",
-            "3Sum: Given an integer array, find all unique triplets that sum to zero. Describe approach and write the core logic.",
-            "Add Two Numbers: You are given two non-empty linked lists representing non-negative integers (digits in reverse order). Add them and return the sum as a linked list. Implement it.",
-            "Container With Most Water: Given n non-negative integers representing vertical lines, find two lines that form a container holding the most water. Write the algorithm.",
-            "Implement a function to group anagrams together. Given a list of strings, return grouped lists. State time and space complexity.",
-        ],
-        "hard": [
-            "Merge k Sorted Lists: Given an array of k linked lists (each sorted), merge them into one sorted list. Implement and analyze time/space complexity.",
-            "Trapping Rain Water: Given n non-negative integers representing an elevation map, compute how much water it can trap after raining. Write the solution and Big-O.",
-            "Find the median of two sorted arrays of size m and n. Implement and state time complexity (aim for O(log(min(m,n)))).",
-            "Serialize and Deserialize a Binary Tree: Design an algorithm to serialize and deserialize a binary tree. Write the code.",
-        ],
-    },
-    "amazon": {
-        "easy": [
-            "Two Sum: Given an array and a target, return indices of two numbers that add up to the target. Implement the function.",
-            "Valid Parentheses: Check if a string of brackets is valid. Write the code.",
-            "Reverse a string in-place (or reverse words in a sentence). Implement it.",
-            "Implement a function to detect a cycle in a linked list. Return the node where the cycle begins or null.",
-            "Maximum depth of a binary tree. Write a recursive or iterative solution.",
-        ],
-        "medium": [
-            "LRU Cache: Design and implement a data structure for Least Recently Used (LRU) cache. Support get and put in O(1). Describe and code.",
-            "Longest Substring Without Repeating Characters: Find length of longest substring with no repeating characters. Implement and give complexity.",
-            "Number of Islands: Given a 2D grid of '1's and '0's, count the number of islands. Write BFS/DFS solution.",
-            "Copy List with Random Pointer: Deep copy a linked list where each node has a random pointer. Implement it.",
-            "Word Break: Given a string and a dictionary of words, determine if the string can be segmented into dictionary words. Write the solution.",
-        ],
-        "hard": [
-            "Merge k Sorted Lists: Merge k sorted linked lists into one sorted list. Implement and analyze.",
-            "Trapping Rain Water: Compute how much water can be trapped given elevation array. Write code and Big-O.",
-            "Word Ladder II: Given begin word, end word, and word list, find all shortest transformation sequences. Implement BFS/DFS.",
-        ],
-    },
-    "microsoft": {
-        "easy": [
-            "Two Sum: Return indices of two numbers that add up to target. Implement.",
-            "Valid Parentheses: Check if bracket string is valid. Write code.",
-            "Merge Two Sorted Lists: Merge two sorted linked lists. Implement.",
-            "Maximum depth of binary tree. Write solution.",
-            "Implement strStr(): Return index of first occurrence of needle in haystack, or -1. Write the function.",
-        ],
-        "medium": [
-            "Add Two Numbers (linked list): Add two numbers represented as reversed linked lists. Implement.",
-            "Longest Substring Without Repeating Characters: Find length of longest substring without repeats. Code and complexity.",
-            "Reverse Linked List II: Reverse a portion of a linked list from position left to right. Implement.",
-            "Binary Tree Level Order Traversal: Return level-order traversal of a binary tree. Write BFS solution.",
-            "Set Matrix Zeroes: Given a matrix, set entire row and column to 0 if an element is 0. Do in place if possible. Implement.",
-        ],
-        "hard": [
-            "Merge k Sorted Lists: Merge k sorted lists. Implement and state complexity.",
-            "Trapping Rain Water: Compute trapped water. Implement with O(n) time.",
-            "Serialize and Deserialize Binary Tree: Design serialization format and implement encode/decode.",
-        ],
-    },
-    "meta": {
-        "easy": [
-            "Two Sum: Given array and target, return indices of two numbers that sum to target. Implement.",
-            "Valid Parentheses: Check valid bracket sequence. Write code.",
-            "Merge Two Sorted Lists: Merge two sorted linked lists. Implement.",
-            "Maximum depth of binary tree. Write recursive/iterative solution.",
-            "Best Time to Buy and Sell Stock: One transaction, find max profit. Implement.",
-        ],
-        "medium": [
-            "Add Two Numbers (linked lists): Add two numbers as reversed linked lists. Implement.",
-            "Longest Substring Without Repeating Characters: Length of longest substring without repeating chars. Code + complexity.",
-            "3Sum: Find all unique triplets that sum to zero. Implement and optimize.",
-            "Binary Tree Level Order Traversal: Return level-order traversal. Write BFS.",
-            "Lowest Common Ancestor of a Binary Tree: Given tree and two nodes, find LCA. Implement.",
-        ],
-        "hard": [
-            "Merge k Sorted Lists: Merge k sorted lists. Implement.",
-            "Trapping Rain Water: Compute trapped water. Implement.",
-            "Serialize and Deserialize Binary Tree: Design and implement serialize/deserialize.",
-        ],
-    },
-    "apple": {
-        "easy": [
-            "Two Sum: Return indices of two numbers that add to target. Implement.",
-            "Valid Parentheses: Check valid brackets. Write code.",
-            "Merge Two Sorted Lists: Merge two sorted lists. Implement.",
-            "Reverse a linked list. Implement.",
-            "Implement a queue using two stacks. Write enqueue and dequeue.",
-        ],
-        "medium": [
-            "Longest Substring Without Repeating Characters: Find length. Implement and state complexity.",
-            "Add Two Numbers (linked lists): Add two numbers. Implement.",
-            "LRU Cache: Design get/put in O(1). Implement.",
-            "Number of Islands: Count islands in 2D grid. Write BFS/DFS.",
-            "Group Anagrams: Group strings that are anagrams. Implement.",
-        ],
-        "hard": [
-            "Merge k Sorted Lists: Merge k sorted lists. Implement.",
-            "Trapping Rain Water: Compute trapped water. Implement.",
-            "Serialize and Deserialize Binary Tree: Implement.",
-        ],
-    },
-    "netflix": {
-        "easy": [
-            "Two Sum: Indices of two numbers that sum to target. Implement.",
-            "Valid Parentheses: Valid bracket string. Implement.",
-            "Merge Two Sorted Lists: Merge two sorted lists. Implement.",
-            "Reverse a linked list. Implement.",
-        ],
-        "medium": [
-            "Longest Substring Without Repeating Characters: Implement and give complexity.",
-            "LRU Cache: Design and implement. O(1) get/put.",
-            "Group Anagrams: Group anagrams. Implement.",
-            "Number of Islands: Count islands. BFS/DFS.",
-        ],
-        "hard": [
-            "Merge k Sorted Lists: Implement and analyze.",
-            "Trapping Rain Water: Implement.",
-        ],
-    },
-}
-# General pool when company not in bank (still coding questions)
-LEETCODE_STYLE_GENERAL = {
-    "easy": [
-        "Two Sum: Given an array of integers and a target, return indices of the two numbers that add up to the target. Write the function and implement it.",
-        "Valid Parentheses: Given a string of brackets, determine if it is valid. Implement the solution.",
-        "Merge Two Sorted Lists: Merge two sorted linked lists and return the head of the merged list. Write code.",
-        "Reverse a linked list. Implement a function that takes the head and returns the new head.",
-        "Maximum Depth of Binary Tree: Given root, return maximum depth. Write recursive or iterative solution.",
-    ],
-    "medium": [
-        "Longest Substring Without Repeating Characters: Find the length of the longest substring without repeating characters. Implement and state time/space complexity.",
-        "Add Two Numbers: Two linked lists represent numbers in reverse. Add them and return sum as linked list. Implement.",
-        "3Sum: Find all unique triplets in the array that sum to zero. Implement and state complexity.",
-        "Container With Most Water: Find two lines that form the container with most water. Write the algorithm.",
-        "Group Anagrams: Group strings that are anagrams. Implement and give complexity.",
-    ],
-    "hard": [
-        "Merge k Sorted Lists: Merge k sorted linked lists into one. Implement and state time/space complexity.",
-        "Trapping Rain Water: Given elevation map, compute how much water can be trapped. Implement with O(n) time.",
-        "Find Median of Two Sorted Arrays: Compute median in O(log(min(m,n))). Describe approach and implement.",
-    ],
-}
-
-# Shorter than a full essay, but gives candidates clear deliverables (technical bank questions only).
-TECHNICAL_QUESTION_CONTEXT = """
-
-What to include in your answer: (1) your understanding of the problem, (2) approach and why it works, (3) pseudocode or code, (4) a small example or trace if helpful, (5) edge cases, (6) time and space complexity (Big-O) with a one-line justification each."""
 
 # Define the structure of data we expect to receive
 class InterviewRequest(BaseModel):
@@ -301,7 +146,7 @@ async def generate_question(
             bank = LEETCODE_STYLE_QUESTIONS[company_key].get(diff_key, LEETCODE_STYLE_GENERAL[diff_key])
         else:
             bank = LEETCODE_STYLE_GENERAL.get(diff_key, LEETCODE_STYLE_GENERAL["medium"])
-        question = random.choice(bank).strip() + TECHNICAL_QUESTION_CONTEXT
+        question = random.choice(bank).strip()
         return {
             "question": question,
             "interview_type": interview_type,
