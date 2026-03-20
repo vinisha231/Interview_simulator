@@ -1761,7 +1761,16 @@ export default function App() {
                 <input name="password" type="password" placeholder="Password" autoComplete="current-password" defaultValue={loginPrefill?.password ?? ""} required />
                 <button type="submit">Login</button>
               </form>
-              <button onClick={() => { setLoginPrefill(null); setAuthView("signup"); }}>Switch to Sign Up</button>
+              <button
+                type="button"
+                className="auth-alt-link"
+                onClick={() => {
+                  setLoginPrefill(null);
+                  setAuthView("signup");
+                }}
+              >
+                Don&apos;t have an account yet? Create one
+              </button>
             </div>
           ) : (
             <div key="signup">
@@ -1821,7 +1830,16 @@ export default function App() {
                 <input name="password" type="password" placeholder="Password" autoComplete="new-password" required />
                 <button type="submit">Sign Up</button>
               </form>
-              <button onClick={() => { setLoginPrefill(null); setAuthView("login"); }}>Switch to Login</button>
+              <button
+                type="button"
+                className="auth-alt-link"
+                onClick={() => {
+                  setLoginPrefill(null);
+                  setAuthView("login");
+                }}
+              >
+                Already have an account? Log in
+              </button>
             </div>
           )}
         </div>
