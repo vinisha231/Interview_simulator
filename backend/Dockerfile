@@ -35,11 +35,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend application code (build from repo root: docker build -f backend/Dockerfile .)
 COPY backend/ .
 
+RUN chmod +x /app/docker-entrypoint.sh
+
 # Expose port 8000 to the outside world
 # This tells Docker that our application will listen on port 8000
 EXPOSE 8000
 
-# Define the command to run when the container starts
-# This starts our FastAPI application using uvicorn
-# --host 0.0.0.0 means accept connections from any IP address
+# Run migrations then start the app (DATABASE_URL must be set in EB environment)
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
