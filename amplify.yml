@@ -6,10 +6,11 @@ frontend:
   phases:
     preBuild:
       commands:
-        - cd frontend && npm ci
+        # Use --prefix (not `cd frontend`) so BUILD phase always runs from repo root; Amplify can leave the shell cwd inside frontend after preBuild, which breaks a second `cd frontend`.
+        - npm ci --prefix frontend
     build:
       commands:
-        - cd frontend && npm run build
+        - npm run build --prefix frontend
   artifacts:
     baseDirectory: frontend/dist
     files:
