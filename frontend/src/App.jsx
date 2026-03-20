@@ -5,6 +5,32 @@ import TechnicalInterviewBox from './interviewBox';
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const apiUrl = (path) => `${API_BASE_URL}${path}`;
 
+function formatApiDetail(detail) {
+  if (detail == null) return "Request failed";
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    const msgs = detail.map((x) =>
+      typeof x === "object" && x != null && "msg" in x ? x.msg : String(x),
+    );
+    return msgs.filter(Boolean).join(" ") || "Request failed";
+  }
+  if (typeof detail === "object" && "msg" in detail && detail.msg) return String(detail.msg);
+  return "Request failed";
+}
+
+const PRACTICE_QUOTES = [
+  "Small sessions today become confidence in the interview room tomorrow.",
+  "Consistency beats intensity — one focused round of practice is a win.",
+  "Every answer you rehearse is proof you're serious about the role you want.",
+  "Progress is invisible until it isn't; keep showing up for yourself.",
+  "The best candidates aren't lucky — they're prepared. You're building that now.",
+  "One difficult question practiced is one fewer surprises on game day.",
+  "Your future self will thank you for the minutes you invest today.",
+  "Skills compound quietly. Trust the repetition.",
+  "Comfort in interviewing is trained, not born — you're training it.",
+  "Each session sharpens how you think under pressure. That's the real edge.",
+];
+
 function getStrengthItemText(item) {
   if (typeof item === "string") return item;
   if (item && typeof item === "object") {
@@ -74,30 +100,6 @@ function ClarifyChatIcon() {
         d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6l-4 4V6a2 2 0 0 1 2-2zm0 2v13.17L5.17 16H20V6H4zm2 3h12v2H6V9zm0 3h8v2H6v-2zm0 3h10v2H6v-2z"
       />
     </svg>
-  );
-}
-
-function QuestionClarifyCTA({ onOpen, isFollowUp }) {
-  return (
-    <div className="question-clarify-cta-row">
-      <button
-        type="button"
-        className="question-clarify-cta"
-        onClick={onOpen}
-        aria-label={
-          isFollowUp
-            ? "Open chat to clarify the follow-up question"
-            : "Open chat to clarify the interview question"
-        }
-      >
-        <ClarifyChatIcon />
-        <span className="question-clarify-cta-text">
-          {isFollowUp
-            ? "Clarify this follow-up (not graded)"
-            : "Clarify this question (not graded)"}
-        </span>
-      </button>
-    </div>
   );
 }
 
@@ -233,7 +235,7 @@ function QuestionClarifyModal({
                 send();
               }
             }}
-            placeholder="Type your question… (Enter to send, Shift+Enter for new line)"
+            placeholder="enter the question"
             rows={2}
             disabled={disabled || loading}
           />
@@ -299,6 +301,10 @@ export default function App() {
   const [calendarEventForm, setCalendarEventForm] = useState({ event_date: "", title: "", start_time: "", end_time: "", notes: "" });
   const [calendarEventSaving, setCalendarEventSaving] = useState(false);
   const [calendarEventError, setCalendarEventError] = useState("");
+  const [calendarQuote, setCalendarQuote] = useState(
+    () => PRACTICE_QUOTES[Math.floor(Math.random() * PRACTICE_QUOTES.length)],
+  );
+  const prevViewRef = useRef(currentView);
   const [settingsFullName, setSettingsFullName] = useState("");
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsError, setSettingsError] = useState("");
@@ -775,6 +781,8 @@ export default function App() {
             notes: sessionNotes.trim() || null
           })
         });
+        void fetchDailyLogData();
+        fetchCalendarMonth(calendarYear, calendarMonth);
       } else {
         alert("Failed to evaluate answer. Please try again.");
       }
@@ -890,6 +898,8 @@ export default function App() {
             notes: (followUpSessionNotes || sessionNotes || "").trim() || null
           })
         });
+        void fetchDailyLogData();
+        fetchCalendarMonth(calendarYear, calendarMonth);
       } else {
         alert("Failed to evaluate follow-up answer. Please try again.");
       }
@@ -1081,7 +1091,12 @@ export default function App() {
       });
       if (res.status === 401) return;
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) return;
+      if (!res.ok) {
+        const msg = formatApiDetail(data?.detail);
+        setCalendarError((prev) => prev || msg || "Could not load calendar events.");
+        setCalendarEventsByDate({});
+        return;
+      }
       setCalendarEventsByDate(data.events_by_date || {});
     } catch {
       setCalendarEventsByDate({});
@@ -1126,14 +1141,21 @@ export default function App() {
         return;
       }
     }
+    const { mode, event } = calendarEventModal;
+    const eventDate =
+      mode === "add"
+        ? calendarEventModal.date || calendarEventForm.event_date
+        : calendarEventForm.event_date;
+    if (!eventDate || !String(eventDate).trim()) {
+      setCalendarEventError("Please choose a date for the event.");
+      return;
+    }
     setCalendarEventSaving(true);
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Not logged in");
-      const { mode, event } = calendarEventModal;
-      const eventDate = mode === "add" ? calendarEventModal.date : calendarEventForm.event_date;
       const body = {
-        event_date: eventDate,
+        event_date: String(eventDate).trim(),
         title: calendarEventForm.title.trim() || "Untitled",
         start_time: start || null,
         end_time: end || null,
@@ -1146,7 +1168,7 @@ export default function App() {
           body: JSON.stringify(body),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data?.detail || "Failed to add event");
+        if (!res.ok) throw new Error(formatApiDetail(data?.detail) || "Failed to add event");
       } else {
         const res = await fetch(apiUrl(`/api/calendar/events/${event.id}`), {
           method: "PATCH",
@@ -1154,7 +1176,7 @@ export default function App() {
           body: JSON.stringify(body),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data?.detail || "Failed to update event");
+        if (!res.ok) throw new Error(formatApiDetail(data?.detail) || "Failed to update event");
       }
       closeCalendarEventModal();
       fetchCalendarEvents(calendarYear, calendarMonth);
@@ -1260,8 +1282,16 @@ export default function App() {
   }, [currentView, user]);
 
   useEffect(() => {
-    if (currentView === "interview" && user) {
+    if ((currentView === "interview" || currentView === "calendar") && user) {
       fetchDailyLogData();
+    }
+  }, [currentView, user]);
+
+  useEffect(() => {
+    const prev = prevViewRef.current;
+    prevViewRef.current = currentView;
+    if (currentView === "calendar" && prev !== "calendar" && user) {
+      setCalendarQuote(PRACTICE_QUOTES[Math.floor(Math.random() * PRACTICE_QUOTES.length)]);
     }
   }, [currentView, user]);
 
@@ -1385,6 +1415,8 @@ export default function App() {
                 session_total_seconds: ref.timedSessionDurationSeconds,
               }),
             });
+            void fetchDailyLogData();
+            fetchCalendarMonth(calendarYear, calendarMonth);
           } else {
             finalResponses = [
               ...ref.timedResponses,
@@ -1577,6 +1609,8 @@ export default function App() {
             session_total_seconds: timedSessionDurationSeconds,
           }),
         });
+        void fetchDailyLogData();
+        fetchCalendarMonth(calendarYear, calendarMonth);
         const nextIndex = timedQuestionIndex + 1;
         if (nextIndex >= TIMED_QUESTIONS_COUNT) {
           if (timerIntervalRef.current) {
@@ -2151,13 +2185,14 @@ export default function App() {
                 type="button"
                 className="question-clarify-fab"
                 onClick={() => setClarifyMainOpen(true)}
-                aria-label="Open chat: ask about this question"
+                aria-label="Ask about this question (opens chat)"
                 title="Ask about this question (not graded)"
               >
-                <ClarifyChatIcon />
+                <span className="question-clarify-fab-q" aria-hidden="true">
+                  ?
+                </span>
               </button>
             </div>
-            <QuestionClarifyCTA onOpen={() => setClarifyMainOpen(true)} isFollowUp={false} />
           </div>
         </div>
 
@@ -2261,13 +2296,14 @@ export default function App() {
                     type="button"
                     className="question-clarify-fab"
                     onClick={() => setClarifyFollowupOpen(true)}
-                    aria-label="Open chat: ask about this follow-up"
+                    aria-label="Ask about this follow-up (opens chat)"
                     title="Ask about this follow-up (not graded)"
                   >
-                    <ClarifyChatIcon />
+                    <span className="question-clarify-fab-q" aria-hidden="true">
+                      ?
+                    </span>
                   </button>
                 </div>
-                <QuestionClarifyCTA onOpen={() => setClarifyFollowupOpen(true)} isFollowUp />
               </div>
             )}
             {followupQuestion &&
@@ -2760,6 +2796,9 @@ export default function App() {
 
     return (
       <div className="content calendar-page">
+        <p className="calendar-motivation" role="status">
+          {calendarQuote}
+        </p>
         <h2>Activity Calendar</h2>
 
         <div className="calendar-top-row">

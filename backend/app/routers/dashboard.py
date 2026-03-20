@@ -152,15 +152,17 @@ def get_daily_log(
     A day is "logged" when the user has at least one saved interview session
     in `interview_sessions` for that date.
     """
-    now = datetime.now(timezone.utc)
-    today = now.date()
-    start_date = today - timedelta(days=6)
+    now_utc = datetime.now(timezone.utc)
+    offset = timedelta(minutes=int(tz_offset_minutes or 0))
+    # Calendar day in the user's browser (must match JS getTimezoneOffset convention).
+    today_local = (now_utc - offset).date()
+    start_date = today_local - timedelta(days=6)
 
     # Compute streak over a larger window (so streak can exceed 7 days)
-    streak_window_start = today - timedelta(days=180)
+    streak_window_start = today_local - timedelta(days=180)
     try:
         start_dt = datetime.combine(streak_window_start, datetime.min.time(), tzinfo=timezone.utc)
-        end_dt = datetime.combine(today + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc)
+        end_dt = datetime.combine(today_local + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc)
         sessions = (
             db.query(InterviewSession.created_at)
             .filter(InterviewSession.user_id == current_user.id)
@@ -172,7 +174,6 @@ def get_daily_log(
         raise
 
     date_set = set()
-    offset = timedelta(minutes=int(tz_offset_minutes or 0))
     for (created_at,) in sessions:
         if created_at is None:
             continue
@@ -181,7 +182,9 @@ def get_daily_log(
         local_dt = created_at - offset  # JS getTimezoneOffset(): local = UTC - offset
         date_set.add(local_dt.date().isoformat())
 
-    logged_dates = {iso for iso in date_set if iso >= start_date.isoformat() and iso <= today.isoformat()}
+    logged_dates = {
+        iso for iso in date_set if start_date.isoformat() <= iso <= today_local.isoformat()
+    }
 
     days = []
     for i in range(7):
@@ -195,10 +198,17 @@ def get_daily_log(
             }
         )
 
+    # Streak: consecutive practice days anchored at today (local) or yesterday if today not logged yet.
     streak = 0
-    if date_set:
-        end_iso = max(date_set)
-        cursor = datetime.fromisoformat(end_iso).date()
+    anchor = None
+    if today_local.isoformat() in date_set:
+        anchor = today_local
+    else:
+        y = today_local - timedelta(days=1)
+        if y.isoformat() in date_set:
+            anchor = y
+    if anchor is not None:
+        cursor = anchor
         while cursor.isoformat() in date_set:
             streak += 1
             cursor = cursor - timedelta(days=1)

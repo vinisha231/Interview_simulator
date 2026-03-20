@@ -1477,6 +1477,19 @@ textarea:disabled {
 }
 
 /* Calendar page */
+.calendar-motivation {
+  max-width: 640px;
+  margin: 0 auto 20px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--box-bg);
+  color: var(--card-text);
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+}
 .calendar-page {
   text-align: left;
 }
@@ -1712,37 +1725,11 @@ textarea:disabled {
   align-items: flex-start;
   gap: 12px;
 }
-.question-clarify-cta-row {
-  width: 100%;
-}
-.question-clarify-cta {
-  width: 100%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border-radius: 12px;
-  border: 2px solid var(--accent);
-  background: rgba(102, 126, 234, 0.12);
-  color: var(--accent);
-  font-size: 15px;
+.question-clarify-fab-q {
+  font-size: 1.35rem;
   font-weight: 700;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-  transition: background 0.2s, color 0.2s, border-color 0.2s;
-}
-.question-clarify-cta:hover {
-  background: rgba(102, 126, 234, 0.22);
-  border-color: var(--accent-hover);
-  color: var(--accent-hover);
-}
-.question-clarify-cta-text {
-  text-align: left;
-}
-body.theme-light .question-clarify-cta {
-  background: rgba(90, 103, 216, 0.1);
+  line-height: 1;
+  display: block;
 }
 .question-box-text {
   flex: 1;
