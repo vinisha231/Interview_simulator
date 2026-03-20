@@ -18,6 +18,25 @@ function formatApiDetail(detail) {
   return "Request failed";
 }
 
+async function readApiJson(res) {
+  const raw = await res.text();
+  try {
+    return { data: raw ? JSON.parse(raw) : {}, raw };
+  } catch {
+    return { data: null, raw };
+  }
+}
+
+function messageFromFailedResponse(res, data, raw) {
+  if (data && typeof data === "object" && data.detail != null) {
+    const m = formatApiDetail(data.detail);
+    if (m !== "Request failed") return m;
+  }
+  const compact = String(raw || "").replace(/\s+/g, " ").trim();
+  if (compact.length) return `Error ${res.status}: ${compact.slice(0, 200)}`;
+  return `Error ${res.status}`;
+}
+
 const PRACTICE_QUOTES = [
   "Small sessions today become confidence in the interview room tomorrow.",
   "Consistency beats intensity — one focused round of practice is a win.",
@@ -1064,13 +1083,11 @@ export default function App() {
         return;
       }
 
-      const data = await res.json().catch(() => ({}));
+      const { data, raw } = await readApiJson(res);
       if (!res.ok) {
-        const msg = data?.detail;
-        const text = typeof msg === "string" ? msg : "Failed to load calendar month";
-        throw new Error(text);
+        throw new Error(messageFromFailedResponse(res, data, raw));
       }
-      setCalendarVisitedDates(Array.isArray(data.visited_dates) ? data.visited_dates : []);
+      setCalendarVisitedDates(Array.isArray(data?.visited_dates) ? data.visited_dates : []);
     } catch (e) {
       setCalendarError(e.message || "Could not load calendar");
       setCalendarVisitedDates([]);
@@ -1090,15 +1107,16 @@ export default function App() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.status === 401) return;
-      const data = await res.json().catch(() => ({}));
+      const { data, raw } = await readApiJson(res);
       if (!res.ok) {
-        const msg = formatApiDetail(data?.detail);
-        setCalendarError((prev) => prev || msg || "Could not load calendar events.");
+        const msg = messageFromFailedResponse(res, data, raw);
+        setCalendarError((prev) => prev || msg);
         setCalendarEventsByDate({});
         return;
       }
-      setCalendarEventsByDate(data.events_by_date || {});
-    } catch {
+      setCalendarEventsByDate((data && data.events_by_date) || {});
+    } catch (e) {
+      setCalendarError((prev) => prev || e.message || "Could not load calendar events.");
       setCalendarEventsByDate({});
     }
   };
@@ -1167,16 +1185,16 @@ export default function App() {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify(body),
         });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(formatApiDetail(data?.detail) || "Failed to add event");
+        const { data, raw } = await readApiJson(res);
+        if (!res.ok) throw new Error(messageFromFailedResponse(res, data, raw));
       } else {
         const res = await fetch(apiUrl(`/api/calendar/events/${event.id}`), {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify(body),
         });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(formatApiDetail(data?.detail) || "Failed to update event");
+        const { data, raw } = await readApiJson(res);
+        if (!res.ok) throw new Error(messageFromFailedResponse(res, data, raw));
       }
       closeCalendarEventModal();
       fetchCalendarEvents(calendarYear, calendarMonth);

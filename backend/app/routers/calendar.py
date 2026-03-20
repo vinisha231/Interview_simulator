@@ -2,6 +2,7 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy.exc import ProgrammingError, OperationalError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
@@ -78,6 +79,25 @@ def _event_to_item(e: UserCalendarEvent) -> dict:
     }
 
 
+_MISSING_TABLE_MSG = (
+    "Calendar is not initialized on the server database. "
+    "SSH into the backend host and run: alembic upgrade head"
+)
+
+
+def _reraise_calendar_db(db: Session, exc: Exception) -> None:
+    """Map missing table / DB errors to a clear 503 for operators."""
+    db.rollback()
+    err = str(getattr(exc, "orig", None) or exc).lower()
+    if "user_calendar_events" in err or (
+        "relation" in err and "does not exist" in err
+    ):
+        raise HTTPException(status_code=503, detail=_MISSING_TABLE_MSG) from exc
+    if isinstance(exc, (ProgrammingError, OperationalError)):
+        raise HTTPException(status_code=503, detail=_MISSING_TABLE_MSG) from exc
+    raise
+
+
 @router.get("/events")
 def list_events(
     year: int,
@@ -93,14 +113,18 @@ def list_events(
     else:
         end = date(year, month + 1, 1)
 
-    events = (
-        db.query(UserCalendarEvent)
-        .filter(UserCalendarEvent.user_id == current_user.id)
-        .filter(UserCalendarEvent.event_date >= start)
-        .filter(UserCalendarEvent.event_date < end)
-        .order_by(UserCalendarEvent.event_date, UserCalendarEvent.start_time)
-        .all()
-    )
+    try:
+        events = (
+            db.query(UserCalendarEvent)
+            .filter(UserCalendarEvent.user_id == current_user.id)
+            .filter(UserCalendarEvent.event_date >= start)
+            .filter(UserCalendarEvent.event_date < end)
+            .order_by(UserCalendarEvent.event_date, UserCalendarEvent.start_time)
+            .all()
+        )
+    except SQLAlchemyError as e:
+        _reraise_calendar_db(db, e)
+
     by_date = {}
     for e in events:
         d = e.event_date.isoformat()
@@ -126,9 +150,12 @@ def create_event(
         end_time=body.end_time.strip() if body.end_time else None,
         notes=body.notes.strip() if body.notes else None,
     )
-    db.add(event)
-    db.commit()
-    db.refresh(event)
+    try:
+        db.add(event)
+        db.commit()
+        db.refresh(event)
+    except SQLAlchemyError as e:
+        _reraise_calendar_db(db, e)
     return _event_to_item(event)
 
 
@@ -139,11 +166,14 @@ def update_event(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
-    event = (
-        db.query(UserCalendarEvent)
-        .filter(UserCalendarEvent.id == event_id, UserCalendarEvent.user_id == current_user.id)
-        .first()
-    )
+    try:
+        event = (
+            db.query(UserCalendarEvent)
+            .filter(UserCalendarEvent.id == event_id, UserCalendarEvent.user_id == current_user.id)
+            .first()
+        )
+    except SQLAlchemyError as e:
+        _reraise_calendar_db(db, e)
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     start = body.start_time if body.start_time is not None else event.start_time
@@ -159,8 +189,11 @@ def update_event(
         event.end_time = body.end_time.strip() or None
     if body.notes is not None:
         event.notes = body.notes.strip() or None
-    db.commit()
-    db.refresh(event)
+    try:
+        db.commit()
+        db.refresh(event)
+    except SQLAlchemyError as e:
+        _reraise_calendar_db(db, e)
     return _event_to_item(event)
 
 
@@ -170,13 +203,19 @@ def delete_event(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
 ):
-    event = (
-        db.query(UserCalendarEvent)
-        .filter(UserCalendarEvent.id == event_id, UserCalendarEvent.user_id == current_user.id)
-        .first()
-    )
+    try:
+        event = (
+            db.query(UserCalendarEvent)
+            .filter(UserCalendarEvent.id == event_id, UserCalendarEvent.user_id == current_user.id)
+            .first()
+        )
+    except SQLAlchemyError as e:
+        _reraise_calendar_db(db, e)
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-    db.delete(event)
-    db.commit()
+    try:
+        db.delete(event)
+        db.commit()
+    except SQLAlchemyError as e:
+        _reraise_calendar_db(db, e)
     return {"ok": True}
