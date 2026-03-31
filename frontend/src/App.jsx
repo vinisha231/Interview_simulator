@@ -5,6 +5,49 @@ import TechnicalInterviewBox from './interviewBox';
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const apiUrl = (path) => `${API_BASE_URL}${path}`;
 
+/** Contact for support — opens the user's mail client (mailto). */
+const CONTACT_EMAIL = "viba2022@gmail.com";
+
+function MailIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"
+      />
+    </svg>
+  );
+}
+
+function WarningTriangleIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" width="40" height="40" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"
+      />
+    </svg>
+  );
+}
+
+function TrashIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" width="40" height="40" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+      />
+    </svg>
+  );
+}
+
+/** Client-side email shape check; the API also validates with Pydantic EmailStr. */
+function isValidEmailFormat(email) {
+  const s = String(email ?? "").trim();
+  if (!s) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s);
+}
+
 function formatApiDetail(detail) {
   if (detail == null) return "Request failed";
   if (typeof detail === "string") return detail;
@@ -327,6 +370,12 @@ export default function App() {
   const [settingsFullName, setSettingsFullName] = useState("");
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsError, setSettingsError] = useState("");
+  const [accountConfirmModal, setAccountConfirmModal] = useState(null); // null | "disable" | "delete" — warning step
+  const [accountModal, setAccountModal] = useState(null); // null | "disable" | "delete" — password step
+  const [accountPassword, setAccountPassword] = useState("");
+  const [accountActionLoading, setAccountActionLoading] = useState(false);
+  const [accountActionError, setAccountActionError] = useState("");
+  const [signupEmailError, setSignupEmailError] = useState("");
   const [recentSessionsPreview, setRecentSessionsPreview] = useState([]);
   const [recentSessionsLoading, setRecentSessionsLoading] = useState(false);
   const [recentSessionsError, setRecentSessionsError] = useState("");
@@ -397,7 +446,11 @@ export default function App() {
     if (!user) return;
     setSettingsFullName(String(user.full_name || ""));
   }, [user]);
-  
+
+  useEffect(() => {
+    setSignupEmailError("");
+  }, [authView]);
+
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
@@ -1262,6 +1315,66 @@ export default function App() {
     }
   };
 
+  const openAccountConfirm = (kind) => {
+    setAccountConfirmModal(kind);
+  };
+
+  const closeAccountConfirm = () => {
+    setAccountConfirmModal(null);
+  };
+
+  const proceedFromAccountConfirm = () => {
+    const kind = accountConfirmModal;
+    setAccountConfirmModal(null);
+    if (kind === "disable" || kind === "delete") {
+      setAccountActionError("");
+      setAccountPassword("");
+      setAccountModal(kind);
+    }
+  };
+
+  const closeAccountModal = () => {
+    setAccountModal(null);
+    setAccountPassword("");
+    setAccountActionError("");
+  };
+
+  const runAccountAction = async () => {
+    if (!accountModal) return;
+    setAccountActionLoading(true);
+    setAccountActionError("");
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Not logged in");
+      const path =
+        accountModal === "disable" ? "/api/auth/me/disable-account" : "/api/auth/me/delete-account";
+      const res = await fetch(apiUrl(path), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ password: accountPassword }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        setAccountActionError("Session expired. Please log in again.");
+        handleLogout();
+        return;
+      }
+      if (!res.ok) {
+        const msg = typeof data?.detail === "string" ? data.detail : "Request failed";
+        throw new Error(msg);
+      }
+      closeAccountModal();
+      handleLogout();
+    } catch (e) {
+      setAccountActionError(e.message || "Something went wrong");
+    } finally {
+      setAccountActionLoading(false);
+    }
+  };
+
   const fetchInterviewTotals = async () => {
     setInterviewTotalsLoading(true);
     setInterviewTotalsError("");
@@ -1783,7 +1896,13 @@ export default function App() {
                   password: formData.get('password'),
                   full_name: formData.get('full_name')
                 };
-                
+                const emailTrim = String(userData.email ?? "").trim();
+                if (!isValidEmailFormat(emailTrim)) {
+                  setSignupEmailError("Enter a valid email address (e.g. name@example.com).");
+                  return;
+                }
+                setSignupEmailError("");
+
                 fetch(apiUrl('/api/auth/register'), {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -1825,7 +1944,15 @@ export default function App() {
               }}>
                 <input name="full_name" placeholder="Full Name" type="text" autoComplete="name" required />
                 <input name="username" placeholder="Username" type="text" autoComplete="username" required />
-                <input name="email" type="email" placeholder="Email" autoComplete="email" required />
+                <input
+                  name="email"
+                  type="email"
+                  placeholder="Email"
+                  autoComplete="email"
+                  required
+                  onChange={() => setSignupEmailError("")}
+                />
+                {signupEmailError ? <p className="auth-inline-error">{signupEmailError}</p> : null}
                 <input name="password" type="password" placeholder="Password" autoComplete="new-password" required />
                 <button type="submit">Sign Up</button>
               </form>
@@ -2986,6 +3113,7 @@ export default function App() {
   };
 
   const renderSettingsView = () => {
+    const mailtoHref = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Interview Simulator — question")}`;
     return (
       <div className="content settings-page">
         <h2>Settings</h2>
@@ -3009,6 +3137,50 @@ export default function App() {
             {settingsSaving ? "Saving..." : "Save"}
           </button>
         </div>
+
+        <section className="settings-section">
+          <h3 className="settings-section-title">Contact</h3>
+          <p className="settings-muted settings-contact-intro">Questions or feedback? Tap the mail icon to open your email app.</p>
+          <a
+            href={mailtoHref}
+            className="settings-mail-card"
+            aria-label={`Email ${CONTACT_EMAIL}`}
+          >
+            <span className="settings-mail-icon-wrap" aria-hidden="true">
+              <MailIcon className="settings-mail-icon" />
+            </span>
+            <span className="settings-mail-card-text">
+              <span className="settings-mail-label">Message us</span>
+              <span className="settings-mail-address">{CONTACT_EMAIL}</span>
+            </span>
+          </a>
+        </section>
+
+        <section className="settings-section settings-danger">
+          <h3 className="settings-section-title">Account</h3>
+          <p className="settings-muted">
+            You can disable your account or delete it permanently. You&apos;ll be asked to confirm before anything
+            happens.
+          </p>
+          <div className="settings-danger-actions">
+            <button
+              type="button"
+              className="settings-btn-secondary"
+              onClick={() => openAccountConfirm("disable")}
+              disabled={accountActionLoading}
+            >
+              Disable account
+            </button>
+            <button
+              type="button"
+              className="settings-btn-danger"
+              onClick={() => openAccountConfirm("delete")}
+              disabled={accountActionLoading}
+            >
+              Delete account
+            </button>
+          </div>
+        </section>
       </div>
     );
   };
@@ -3070,6 +3242,108 @@ export default function App() {
         {currentView === "calendar" && renderCalendarView()}
         {currentView === "settings" && renderSettingsView()}
       </div>
+
+      {accountConfirmModal && (
+        <div
+          className="modal-overlay settings-confirm-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="account-confirm-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeAccountConfirm();
+          }}
+        >
+          <div
+            className={`modal-content settings-confirm-modal settings-confirm-modal--${accountConfirmModal}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="settings-confirm-icon-wrap" aria-hidden="true">
+              {accountConfirmModal === "disable" ? (
+                <WarningTriangleIcon className="settings-confirm-icon settings-confirm-icon--disable" />
+              ) : (
+                <TrashIcon className="settings-confirm-icon settings-confirm-icon--delete" />
+              )}
+            </div>
+            <h2 id="account-confirm-title" className="settings-confirm-title">
+              {accountConfirmModal === "disable" ? "Disable this account?" : "Delete this account?"}
+            </h2>
+            <p className="settings-confirm-body">
+              {accountConfirmModal === "disable" ? (
+                <>
+                  Disable stops sign-in until an administrator re-enables your account in the database.{" "}
+                  <strong>Are you sure you want to disable your account?</strong>
+                </>
+              ) : (
+                <>
+                  Delete removes your account and related practice data permanently.{" "}
+                  <strong>This cannot be undone. Are you sure?</strong>
+                </>
+              )}
+            </p>
+            <div className="settings-confirm-actions">
+              <button type="button" className="settings-confirm-btn-no" onClick={closeAccountConfirm}>
+                No
+              </button>
+              <button
+                type="button"
+                className={
+                  accountConfirmModal === "delete" ? "settings-confirm-btn-yes-danger" : "settings-confirm-btn-yes"
+                }
+                onClick={proceedFromAccountConfirm}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {accountModal && (
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="account-modal-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeAccountModal();
+          }}
+        >
+          <div className="modal-content account-modal" onClick={(e) => e.stopPropagation()}>
+            <h2 id="account-modal-title">
+              {accountModal === "disable" ? "Confirm disable" : "Confirm deletion"}
+            </h2>
+            <p className="account-modal-text">
+              {accountModal === "disable"
+                ? "Enter your password to disable your account. You will be signed out."
+                : "Enter your password to permanently delete your account and related data."}
+            </p>
+            <label className="settings-label">
+              Password
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={accountPassword}
+                onChange={(e) => setAccountPassword(e.target.value)}
+                disabled={accountActionLoading}
+              />
+            </label>
+            {accountActionError && <p className="settings-error">{accountActionError}</p>}
+            <div className="modal-actions account-modal-actions">
+              <button type="button" onClick={closeAccountModal} className="back-btn" disabled={accountActionLoading}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={runAccountAction}
+                className={accountModal === "delete" ? "settings-btn-danger-solid" : "submit-btn"}
+                disabled={accountActionLoading || !accountPassword.trim()}
+              >
+                {accountActionLoading ? "Working..." : accountModal === "disable" ? "Disable account" : "Delete forever"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showTimedConfirmModal && (
         <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="timed-confirm-title">
