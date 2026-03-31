@@ -7,7 +7,10 @@ from sqlalchemy import or_, func
 from sqlalchemy.exc import SQLAlchemyError
 from app.database import SessionLocal
 from app.models.user import User
-from pydantic import BaseModel, EmailStr
+from app.models.session import InterviewSession
+from app.models.daily_visit import UserDailyVisit
+from app.models.calendar_event import UserCalendarEvent
+from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
@@ -34,6 +37,19 @@ class UserCreate(BaseModel):
     password: str
     full_name: Optional[str] = None
 
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return str(v).strip().lower()
+
+    @field_validator("username")
+    @classmethod
+    def strip_username(cls, v: str) -> str:
+        s = str(v).strip()
+        if len(s) < 2:
+            raise ValueError("Username must be at least 2 characters")
+        return s
+
 
 class UserResponse(BaseModel):
     id: int
@@ -55,6 +71,10 @@ class Token(BaseModel):
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
+
+
+class PasswordConfirmBody(BaseModel):
+    password: str
 
 
 # Dependency
@@ -141,7 +161,8 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     try:
         # Check if user already exists
         db_user = db.query(User).filter(
-            (User.username == user_data.username) | (User.email == user_data.email)
+            (User.username == user_data.username)
+            | (func.lower(User.email) == user_data.email.lower())
         ).first()
 
         if db_user:
@@ -154,7 +175,7 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
         hashed_password = get_password_hash(user_data.password)
         new_user = User(
             username=user_data.username,
-            email=user_data.email,
+            email=str(user_data.email).strip().lower(),
             hashed_password=hashed_password,
             full_name=user_data.full_name,
         )
@@ -266,9 +287,58 @@ def update_current_user(
         )
 
 
+@router.post("/me/disable-account")
+def disable_account(
+    body: PasswordConfirmBody,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Set is_active to False. User cannot log in until re-enabled in the database."""
+    if not verify_password(body.password, current_user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect password")
+    try:
+        current_user.is_active = False
+        db.add(current_user)
+        db.commit()
+        return {"ok": True}
+    except SQLAlchemyError as e:
+        logger.exception("Disable account DB error")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_db_error_detail(e),
+        )
+
+
+@router.post("/me/delete-account")
+def delete_account(
+    body: PasswordConfirmBody,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Permanently delete the account and related sessions, visits, and calendar events."""
+    if not verify_password(body.password, current_user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect password")
+    uid = current_user.id
+    try:
+        db.query(InterviewSession).filter(InterviewSession.user_id == uid).delete()
+        db.query(UserDailyVisit).filter(UserDailyVisit.user_id == uid).delete()
+        db.query(UserCalendarEvent).filter(UserCalendarEvent.user_id == uid).delete()
+        db.query(User).filter(User.id == uid).delete()
+        db.commit()
+        return {"ok": True}
+    except SQLAlchemyError as e:
+        logger.exception("Delete account DB error")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_db_error_detail(e),
+        )
+
+
 @router.get("/users/count")
 def get_users_count(db: Session = Depends(get_db)):
-    """Return total number of registered users (for admin/dashboard)."""
+    """Total registered users (same access model as GET /users — for admin/local curl)."""
     total = db.query(func.count(User.id)).scalar() or 0
     return {"total": total}
 
