@@ -18,71 +18,99 @@ body {
   overflow-x: hidden;
 }
 
+/* ——— Design tokens ———
+   Gender-neutral palette: deep evergreen-slate surfaces, teal accent,
+   warm sand secondary, soft coral for danger. */
 :root {
-  --bg: #0f1115;
-  --text: #e9edf1;
-  --card-bg: #161a22;
-  --card-text: #e9edf1;
-  --muted: #9aa6b2;
-  --border: #2a2f3a;
-  --accent: #667eea;
-  --accent-hover: #5a6fd8;
-  --accent-soft: rgba(102, 126, 234, 0.18);
-  --btn: #667eea;
-  --btn-hover: #5a6fd8;
-  --warning: #f6ad55;
-  --warning-soft: rgba(246, 173, 85, 0.16);
-  --danger: #fc8181;
-  --danger-strong: #f56565;
-  --danger-soft: rgba(252, 129, 129, 0.14);
-  --danger-solid: #e53e3e;
-  --input-bg: #10131a;
-  --input-text: #e9edf1;
-  --input-border: #2a2f3a;
-  --box-bg: #121621;
-  --box-border: #2a2f3a;
-  --score-bg: #10131a;
-  --stat-bg: #121621;
-  --table-bg: #161a22;
-  --table-header: #283043;
+  --bg: #0f1413;
+  --bg-glow-1: rgba(52, 179, 154, 0.1);
+  --bg-glow-2: rgba(200, 158, 100, 0.07);
+  --text: #e9efec;
+  --card-bg: #151c1a;
+  --card-text: #e9efec;
+  --muted: #93a59e;
+  --border: #27322e;
+  --accent: #34b39a;
+  --accent-hover: #2a9c86;
+  --accent-soft: rgba(52, 179, 154, 0.16);
+  --accent-strong: #5fcdb6;
+  --btn: #1f8a74;
+  --btn-hover: #1a7967;
+  --success: #6bbf8a;
+  --success-soft: rgba(107, 191, 138, 0.14);
+  --warning: #d9a13f;
+  --warning-soft: rgba(217, 161, 63, 0.16);
+  --danger: #e08585;
+  --danger-strong: #d96a6a;
+  --danger-soft: rgba(224, 133, 133, 0.14);
+  --danger-solid: #c75454;
+  --sand: #c89e64;
+  --sand-soft: rgba(200, 158, 100, 0.18);
+  --input-bg: #101615;
+  --input-text: #e9efec;
+  --input-border: #2c3834;
+  --box-bg: #121917;
+  --box-border: #27322e;
+  --score-bg: #101615;
+  --stat-bg: #131a18;
+  --table-bg: #151c1a;
+  --table-header: #1e2a27;
+  --ring: rgba(52, 179, 154, 0.45);
+  --shadow-card: 0 16px 40px rgba(0, 0, 0, 0.35);
+  --shadow-pop: 0 6px 18px rgba(0, 0, 0, 0.28);
 }
 
 body.theme-light {
-  --bg: #f6f7fb;
-  --text: #1b1f2a;
-  --card-bg: #ffffff;
-  --card-text: #1b1f2a;
-  --muted: #5d6b7b;
-  --border: #e1e6ee;
-  --accent: #5a67d8;
-  --accent-hover: #4c59c6;
-  --accent-soft: rgba(90, 103, 216, 0.12);
-  --btn: #5a67d8;
-  --btn-hover: #4c59c6;
-  --warning: #dd6b20;
-  --warning-soft: rgba(221, 107, 32, 0.12);
-  --danger: #c53030;
-  --danger-strong: #c53030;
-  --danger-soft: rgba(197, 48, 48, 0.1);
-  --danger-solid: #c53030;
+  --bg: #f6f5f0;
+  --bg-glow-1: rgba(14, 124, 107, 0.07);
+  --bg-glow-2: rgba(200, 158, 100, 0.1);
+  --text: #1d2724;
+  --card-bg: #fffefb;
+  --card-text: #1d2724;
+  --muted: #5c6b66;
+  --border: #e2e0d6;
+  --accent: #0e7c6b;
+  --accent-hover: #0b6557;
+  --accent-soft: rgba(14, 124, 107, 0.1);
+  --accent-strong: #0e7c6b;
+  --btn: #0e7c6b;
+  --btn-hover: #0b6557;
+  --success: #2e7d4f;
+  --success-soft: rgba(46, 125, 79, 0.12);
+  --warning: #a86f1d;
+  --warning-soft: rgba(168, 111, 29, 0.12);
+  --danger: #bb5050;
+  --danger-strong: #b04a4a;
+  --danger-soft: rgba(187, 80, 80, 0.1);
+  --danger-solid: #a64444;
+  --sand: #a87f48;
+  --sand-soft: rgba(168, 127, 72, 0.16);
   --input-bg: #ffffff;
-  --input-text: #1b1f2a;
-  --input-border: #cfd6e1;
-  --box-bg: #f4f6fa;
-  --box-border: #e1e6ee;
-  --score-bg: #f0f3f9;
-  --stat-bg: #f9fafc;
+  --input-text: #1d2724;
+  --input-border: #d4d2c6;
+  --box-bg: #f1f0e9;
+  --box-border: #e2e0d6;
+  --score-bg: #eeede5;
+  --stat-bg: #faf9f4;
   --table-bg: #ffffff;
-  --table-header: #5a67d8;
+  --table-header: #0e7c6b;
+  --ring: rgba(14, 124, 107, 0.35);
+  --shadow-card: 0 12px 32px rgba(54, 63, 60, 0.1);
+  --shadow-pop: 0 6px 16px rgba(54, 63, 60, 0.12);
 }
 
-body.theme-dark {
-  background: var(--bg);
-  color: var(--text);
-}
-
+body.theme-dark,
 body.theme-light {
-  background: var(--bg);
+  color: var(--text);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(1100px 520px at 85% -10%, var(--bg-glow-1), transparent 60%),
+    radial-gradient(900px 480px at -10% 110%, var(--bg-glow-2), transparent 55%);
+  background-attachment: fixed;
+}
+
+::selection {
+  background: var(--accent-soft);
   color: var(--text);
 }
 
