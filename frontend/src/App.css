@@ -1285,9 +1285,9 @@ textarea:disabled {
   min-width: 80px;
 }
 .timer-display.timer-urgent {
-  background: rgba(180, 60, 60, 0.25);
-  border-color: #c44;
-  color: #f88;
+  background: var(--danger-soft);
+  border-color: var(--danger-strong);
+  color: var(--danger);
   animation: timer-pulse 1s ease-in-out infinite;
 }
 @keyframes timer-pulse {
@@ -1585,7 +1585,7 @@ textarea:disabled {
 
 .daily-log-day.logged {
   border-color: var(--accent);
-  background: rgba(102, 126, 234, 0.15);
+  background: var(--accent-soft);
 }
 
 .daily-log-day-label {
@@ -1693,16 +1693,16 @@ textarea:disabled {
 }
 
 .calendar-day.visited {
-  background: rgba(212, 175, 55, 0.25);
-  border-color: rgba(212, 175, 55, 0.9);
+  background: var(--sand-soft);
+  border-color: var(--sand);
 }
 
 .calendar-day.visited.today {
-  background: rgba(212, 175, 55, 0.35);
+  background: var(--sand-soft);
 }
 
 .calendar-day.today {
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.35);
+  box-shadow: 0 0 0 2px var(--ring);
 }
 
 .calendar-legend {
@@ -1728,13 +1728,13 @@ textarea:disabled {
 }
 
 .legend-swatch.visited {
-  background: rgba(212, 175, 55, 0.25);
-  border-color: rgba(212, 175, 55, 0.9);
+  background: var(--sand-soft);
+  border-color: var(--sand);
 }
 
 .legend-swatch.today {
-  background: rgba(102, 126, 234, 0.25);
-  border-color: rgba(102, 126, 234, 0.55);
+  background: var(--accent-soft);
+  border-color: var(--accent);
 }
 
 .calendar-add-row {
@@ -1770,7 +1770,7 @@ textarea:disabled {
   font-size: 10px;
   font-weight: 600;
   color: var(--accent);
-  background: rgba(102, 126, 234, 0.15);
+  background: var(--accent-soft);
   border-radius: 4px;
   padding: 2px 6px;
   text-align: left;
@@ -1780,7 +1780,8 @@ textarea:disabled {
   cursor: pointer;
 }
 .calendar-day-event:hover {
-  background: rgba(102, 126, 234, 0.3);
+  background: var(--accent-soft);
+  filter: brightness(1.15);
 }
 .calendar-event-time {
   display: block;
@@ -1815,7 +1816,7 @@ textarea:disabled {
   min-height: 48px;
 }
 .calendar-event-error {
-  color: #c53030;
+  color: var(--danger);
   font-size: 13px;
   margin: 8px 0 12px;
 }
