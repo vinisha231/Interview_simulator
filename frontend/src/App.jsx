@@ -1819,7 +1819,7 @@ export default function App() {
         </div>
         <div className="card">
           <h1>Interview Simulator</h1>
-          <p>Practice interviews with AI-powered feedback</p>
+          <p className="app-tagline">Practice technical, behavioral, and design interviews with AI-powered feedback.</p>
           
           {authView === "login" ? (
             <div key="login">
@@ -3219,7 +3219,7 @@ export default function App() {
         <h1>
           Welcome, {String((user.full_name || user.username || "")).trim().split(/\s+/)[0] || "there"}!
         </h1>
-        <p>LLM Interview Simulator</p>
+        <p className="app-tagline">Practice. Get feedback. Improve.</p>
       
         <div className="nav">
           <button

@@ -159,6 +159,14 @@ body.theme-light {
   color: var(--card-text);
 }
 
+.app-tagline {
+  color: var(--muted);
+  font-size: 1.02rem;
+  letter-spacing: 0.01em;
+  margin-top: -6px;
+  margin-bottom: 28px;
+}
+
 form {
   display: flex;
   flex-direction: column;
