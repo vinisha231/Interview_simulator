@@ -321,7 +321,11 @@ export default function App() {
   const [loginPrefill, setLoginPrefill] = useState(null);
   const [currentView, setCurrentView] = useState("interview");
   const [interviewType, setInterviewType] = useState(null);
-  const [theme, setTheme] = useState("dark");
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem("theme");
+    if (saved === "light" || saved === "dark") return saved;
+    return window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  });
   const [role, setRole] = useState("");
   const [company, setCompany] = useState("");
   const [difficulty, setDifficulty] = useState("medium");
@@ -542,6 +546,7 @@ export default function App() {
   useEffect(() => {
     document.body.classList.remove("theme-dark", "theme-light");
     document.body.classList.add(`theme-${theme}`);
+    localStorage.setItem("theme", theme);
   }, [theme]);
 
   useEffect(() => {
