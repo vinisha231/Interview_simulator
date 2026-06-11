@@ -131,6 +131,40 @@ body.theme-light {
   color: var(--text);
 }
 
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+  background-clip: content-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 .app {
   display: flex;
   justify-content: center;
@@ -1121,10 +1155,11 @@ textarea:disabled {
 
 .ide-container {
   border: 2px solid #1e1f22;
-  border-radius: 10px;
+  border-radius: 12px;
   background: #1e1f22;
   overflow: hidden;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  text-align: left;
 }
 
 .ide-editor {
