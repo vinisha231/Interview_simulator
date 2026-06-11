@@ -187,6 +187,44 @@ body.theme-light {
   padding-bottom: max(40px, env(safe-area-inset-bottom, 0px));
 }
 
+/* Animated aurora backdrop: two blurred color fields drifting slowly
+   behind the content. Killed by the prefers-reduced-motion block. */
+.app::before,
+.app::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  width: 55vmax;
+  height: 55vmax;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+.app::before {
+  top: -22vmax;
+  left: -12vmax;
+  background: var(--aurora-1);
+  animation: aurora-drift-a 28s ease-in-out infinite;
+}
+
+.app::after {
+  bottom: -24vmax;
+  right: -14vmax;
+  background: var(--aurora-2);
+  animation: aurora-drift-b 34s ease-in-out infinite;
+}
+
+@keyframes aurora-drift-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(14vmax, 8vmax) scale(1.18); }
+}
+
+@keyframes aurora-drift-b {
+  0%, 100% { transform: translate(0, 0) scale(1.1); }
+  50% { transform: translate(-12vmax, -9vmax) scale(0.92); }
+}
+
 .card {
   background: var(--card-bg);
   color: var(--card-text);
