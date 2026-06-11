@@ -1849,7 +1849,7 @@ export default function App() {
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="toggle-btn"
           >
-            {theme === "dark" ? "Light Mode" : "Dark Mode"}
+            {theme === "dark" ? "☀️ Light" : "🌙 Dark"}
           </button>
         </div>
         <div className="card">
@@ -2169,6 +2169,11 @@ export default function App() {
           <h2>Interview Practice</h2>
           <p>Enter your role and choose an interview type to start practicing.</p>
           <div className="streak-right">
+            {(dailyLogData?.streak ?? 0) > 0 && (
+              <span className="streak-flame" aria-hidden="true">
+                🔥{" "}
+              </span>
+            )}
             Streak: {dailyLogLoading ? "…" : dailyLogData?.streak ?? 0} day(s)
           </div>
 

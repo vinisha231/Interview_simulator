@@ -1795,6 +1795,16 @@ textarea:disabled {
   margin: 2px 0 18px;
 }
 
+.streak-flame {
+  display: inline-block;
+  animation: flame-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes flame-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.22); }
+}
+
 /* Calendar page */
 .calendar-motivation {
   max-width: 640px;
