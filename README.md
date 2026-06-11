@@ -21,15 +21,19 @@ https://vdhaya-interview-simulator.com
 
 The frontend uses a token-based design system defined in `frontend/src/App.css`:
 
-- **Palette**: gender-neutral teal accent over evergreen-slate surfaces, with a
-  warm sand secondary (calendar/timed mode) and soft coral for destructive actions.
-  All colors flow from CSS custom properties — no hard-coded hexes in components.
+- **Palette**: electric indigo accent with a violet gradient partner over deep
+  charcoal surfaces, warm gold secondary (calendar/timed mode), and soft coral
+  for destructive actions. All colors flow from CSS custom properties — no
+  hard-coded hexes in components.
 - **Themes**: dark and light, persisted to `localStorage` and seeded from the
   OS `prefers-color-scheme` on first visit.
 - **Typography**: [Sora](https://fonts.google.com/specimen/Sora) for headings,
   [Inter](https://fonts.google.com/specimen/Inter) for body text.
+- **Motion**: animated aurora backdrop, fade-up view transitions, staggered
+  dashboard cards, count-up stat scores, and hover lifts on interactive cards.
 - **Accessibility**: visible focus rings on all interactive elements,
-  `prefers-reduced-motion` support, and theme-aware scrollbars.
+  `prefers-reduced-motion` support (disables all of the above), and
+  theme-aware scrollbars.
 
 ## Quick Start
 
