@@ -166,15 +166,18 @@ form {
 }
 
 input {
-  padding: 12px;
-  border: 2px solid var(--input-border);
-  border-radius: 8px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--input-border);
+  border-radius: 10px;
   font-size: 16px;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 input:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--ring);
 }
 
 input, textarea {
@@ -182,19 +185,45 @@ input, textarea {
   background: var(--input-bg);
 }
 
+select {
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
 button {
   padding: 12px 24px;
   background: var(--btn);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 16px;
+  font-family: inherit;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s, border-color 0.2s, color 0.2s;
 }
 
 button:hover {
   background: var(--btn-hover);
+}
+
+button:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
 }
 
 .auth-alt-link {
@@ -204,13 +233,13 @@ button:hover {
   padding: 12px 16px;
   background: transparent;
   color: var(--accent);
-  border: 2px solid var(--border);
+  border: 1.5px solid var(--border);
   font-weight: 600;
   line-height: 1.4;
 }
 
 .auth-alt-link:hover {
-  background: rgba(102, 126, 234, 0.1);
+  background: var(--accent-soft);
   border-color: var(--accent);
   color: var(--accent-hover);
 }
@@ -237,11 +266,11 @@ button:hover {
 }
 
 .logout-btn {
-  background: #dc3545;
+  background: var(--danger-solid);
 }
 
 .logout-btn:hover {
-  background: #c82333;
+  background: var(--danger-strong);
 }
 
 .interview-types {
@@ -254,16 +283,21 @@ button:hover {
 .interview-btn {
   padding: 20px 40px;
   font-size: 18px;
-  background: #764ba2;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--btn) 100%);
+  box-shadow: var(--shadow-pop);
 }
 
 .interview-btn:hover {
-  background: #6a4190;
+  background: linear-gradient(135deg, var(--accent-hover) 0%, var(--btn-hover) 100%);
+  transform: translateY(-1px);
 }
 
 .interview-btn:disabled {
-  background: #ccc;
+  background: var(--border);
+  color: var(--muted);
   cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 
 .nav button.active {
@@ -385,18 +419,20 @@ p {
 
 textarea {
   width: 100%;
-  padding: 12px;
-  border: 2px solid var(--input-border);
-  border-radius: 8px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--input-border);
+  border-radius: 10px;
   font-size: 16px;
   font-family: inherit;
   resize: vertical;
   box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 textarea:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--ring);
 }
 
 textarea:disabled {
@@ -411,32 +447,35 @@ textarea:disabled {
 }
 
 .submit-btn {
-  background: #28a745;
+  background: var(--btn);
 }
 
 .submit-btn:hover {
-  background: #218838;
+  background: var(--btn-hover);
 }
 
 .submit-btn:disabled {
-  background: #ccc;
+  background: var(--border);
+  color: var(--muted);
   cursor: not-allowed;
 }
 
 .next-btn {
-  background: #007bff;
+  background: var(--accent);
 }
 
 .next-btn:hover {
-  background: #0056b3;
+  background: var(--accent-hover);
 }
 
 .back-btn {
-  background: #6c757d;
+  background: var(--box-bg);
+  color: var(--card-text);
+  border: 1px solid var(--border);
 }
 
 .back-btn:hover {
-  background: #545b62;
+  background: var(--border);
 }
 
 .score-display {
@@ -476,13 +515,13 @@ textarea:disabled {
 
 /* Dashboard Styles */
 .load-dashboard-btn, .refresh-btn {
-  background: #17a2b8;
+  background: var(--accent);
   margin: 20px auto;
   display: block;
 }
 
 .load-dashboard-btn:hover, .refresh-btn:hover {
-  background: #138496;
+  background: var(--accent-hover);
 }
 
 .stats-grid {
@@ -856,7 +895,7 @@ textarea:disabled {
   margin-top: 14px;
   width: 100%;
   max-width: 360px;
-  background: #17a2b8;
+  background: var(--accent);
   color: white;
   border: none;
   border-radius: 10px;
@@ -867,7 +906,7 @@ textarea:disabled {
 }
 
 .recent-sessions-view-more:hover {
-  background: #138496;
+  background: var(--accent-hover);
 }
 
 .recent-sessions-loading,
@@ -1250,10 +1289,12 @@ textarea:disabled {
   color: var(--muted);
 }
 .interview-btn.timed-mode-btn {
-  background: #0d9488;
+  background: linear-gradient(135deg, var(--sand) 0%, var(--warning) 100%);
+  color: #221a0d;
 }
 .interview-btn.timed-mode-btn:hover {
-  background: #0f766e;
+  background: linear-gradient(135deg, var(--warning) 0%, var(--sand) 100%);
+  filter: brightness(1.04);
 }
 
 /* Timed setup */
