@@ -568,7 +568,8 @@ textarea:disabled {
 
 .stat-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-pop);
 }
 
 .stat-card h3 {
@@ -599,13 +600,13 @@ textarea:disabled {
 }
 
 .sw-title-strengths {
-  color: #28a745;
+  color: var(--success);
   margin: 0;
   font-size: 1.2rem;
 }
 
 .sw-title-weaknesses {
-  color: #dc3545;
+  color: var(--danger);
   margin: 0;
   font-size: 1.2rem;
 }
@@ -887,15 +888,15 @@ textarea:disabled {
 }
 
 .recent-session-score.good {
-  color: #28a745;
+  color: var(--success);
 }
 
 .recent-session-score.medium {
-  color: #ffc107;
+  color: var(--warning);
 }
 
 .recent-session-score.poor {
-  color: #dc3545;
+  color: var(--danger);
 }
 
 .recent-session-meta {
@@ -965,15 +966,15 @@ textarea:disabled {
 }
 
 .score-cell.good {
-  color: #28a745;
+  color: var(--success);
 }
 
 .score-cell.medium {
-  color: #ffc107;
+  color: var(--warning);
 }
 
 .score-cell.poor {
-  color: #dc3545;
+  color: var(--danger);
 }
 
 .feedback-cell {
