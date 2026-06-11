@@ -145,6 +145,41 @@ function toLocalISODate(d) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+// Animated count-up for dashboard stats. Renders "—" for missing values
+// and jumps straight to the target when the user prefers reduced motion.
+function CountUpNumber({ value, suffix = "%" }) {
+  const target = Number(value);
+  const isNumeric = value != null && Number.isFinite(target);
+  const [display, setDisplay] = useState(isNumeric ? 0 : null);
+
+  useEffect(() => {
+    if (!isNumeric) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setDisplay(target);
+      return;
+    }
+    const duration = 900;
+    const start = performance.now();
+    let raf;
+    const tick = (now) => {
+      const p = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setDisplay(Math.round(target * eased));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [isNumeric, target]);
+
+  if (!isNumeric) return <>—</>;
+  return (
+    <>
+      {display}
+      {suffix}
+    </>
+  );
+}
+
 const CLARIFY_INTRO =
   "What questions do you have about the question? I can clarify what it's asking — I won't give away the solution. This chat is not graded.";
 
@@ -2661,32 +2696,32 @@ export default function App() {
           <div className="stat-card">
             <h3>Most Recent Technical Score</h3>
             <div className="stat-number">
-              {stats.most_recent_technical_score != null ? `${stats.most_recent_technical_score}%` : "—"}
+              <CountUpNumber value={stats.most_recent_technical_score} />
             </div>
           </div>
           <div className="stat-card">
             <h3>Average Technical Score</h3>
-            <div className="stat-number">{stats.technical_average != null ? `${stats.technical_average}%` : "—"}</div>
+            <div className="stat-number"><CountUpNumber value={stats.technical_average} /></div>
           </div>
           <div className="stat-card">
             <h3>Most Recent Behavioral Score</h3>
             <div className="stat-number">
-              {stats.most_recent_behavioral_score != null ? `${stats.most_recent_behavioral_score}%` : "—"}
+              <CountUpNumber value={stats.most_recent_behavioral_score} />
             </div>
           </div>
           <div className="stat-card">
             <h3>Average Behavioral Score</h3>
-            <div className="stat-number">{stats.behavioral_average != null ? `${stats.behavioral_average}%` : "—"}</div>
+            <div className="stat-number"><CountUpNumber value={stats.behavioral_average} /></div>
           </div>
           <div className="stat-card">
             <h3>Most Recent Design Score</h3>
             <div className="stat-number">
-              {stats.most_recent_design_score != null ? `${stats.most_recent_design_score}%` : "—"}
+              <CountUpNumber value={stats.most_recent_design_score} />
             </div>
           </div>
           <div className="stat-card">
             <h3>Average Design Score</h3>
-            <div className="stat-number">{stats.design_average != null ? `${stats.design_average}%` : "—"}</div>
+            <div className="stat-number"><CountUpNumber value={stats.design_average} /></div>
           </div>
         </div>
 
