@@ -146,9 +146,10 @@ body.theme-light {
 .card {
   background: var(--card-bg);
   color: var(--card-text);
-  border-radius: 16px;
-  padding: 60px;       /* keeps our comfy size */
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: clamp(28px, 5vw, 60px);
+  box-shadow: var(--shadow-card);
   max-width: 1200px;
   width: 100%;
   text-align: center;
@@ -245,10 +246,27 @@ a:focus-visible {
 }
 
 .nav {
-  display: flex;
-  gap: 10px;
+  display: inline-flex;
+  gap: 4px;
   margin-bottom: 30px;
   justify-content: center;
+  background: var(--box-bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px;
+}
+
+.nav button {
+  background: transparent;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 10px 22px;
+  font-size: 15px;
+}
+
+.nav button:hover {
+  background: var(--accent-soft);
+  color: var(--text);
 }
 
 .card-top-row {
@@ -301,8 +319,10 @@ a:focus-visible {
 }
 
 .nav button.active {
-  background: var(--accent-hover);
-  font-weight: bold;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: var(--shadow-pop);
 }
 
 .question-section, .answer-section, .feedback-section {
@@ -1070,12 +1090,12 @@ textarea:disabled {
 }
 
 .icon-btn:hover {
-  background: rgba(127, 138, 153, 0.18);
+  background: var(--accent-soft);
 }
 
 .icon-btn:focus-visible {
-  outline: 2px solid rgba(102, 126, 234, 0.65);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
 }
 
 .toggle-btn {
