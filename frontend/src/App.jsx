@@ -2193,30 +2193,36 @@ export default function App() {
           </div>
           
           <div className="interview-types">
-            <button 
-              className="interview-btn" 
+            <button
+              className="interview-btn interview-tile"
               onClick={() => startInterview("technical")}
               disabled={isLoading}
             >
-              {isLoading ? "Loading..." : "Technical Interview"}
+              <span className="tile-icon" aria-hidden="true">{"</>"}</span>
+              <span className="tile-title">{isLoading ? "Loading..." : "Technical"}</span>
+              <span className="tile-desc">Coding & algorithms</span>
             </button>
-            <button 
-              className="interview-btn" 
+            <button
+              className="interview-btn interview-tile"
               onClick={() => startInterview("behavioral")}
               disabled={isLoading}
             >
-              {isLoading ? "Loading..." : "Behavioral Interview"}
+              <span className="tile-icon" aria-hidden="true">💬</span>
+              <span className="tile-title">{isLoading ? "Loading..." : "Behavioral"}</span>
+              <span className="tile-desc">STAR stories & soft skills</span>
             </button>
-            <button 
-              className="interview-btn" 
+            <button
+              className="interview-btn interview-tile"
               onClick={() => startInterview("design")}
               disabled={isLoading}
             >
-              {isLoading ? "Loading..." : "Design Interview"}
+              <span className="tile-icon" aria-hidden="true">📐</span>
+              <span className="tile-title">{isLoading ? "Loading..." : "Design"}</span>
+              <span className="tile-desc">Systems & architecture</span>
             </button>
             <button
               type="button"
-              className="interview-btn timed-mode-btn"
+              className="interview-btn interview-tile timed-mode-btn"
               onClick={() => {
                 if (!role.trim()) {
                   alert("Please enter a role to start a timed interview for.");
@@ -2226,7 +2232,9 @@ export default function App() {
               }}
               disabled={isLoading}
             >
-              Start Timed Interview
+              <span className="tile-icon" aria-hidden="true">⏱</span>
+              <span className="tile-title">Timed Session</span>
+              <span className="tile-desc">5 questions, against the clock</span>
             </button>
           </div>
 
