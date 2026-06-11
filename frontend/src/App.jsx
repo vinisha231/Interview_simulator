@@ -3246,7 +3246,7 @@ export default function App() {
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           className="toggle-btn"
         >
-          {theme === "dark" ? "Light Mode" : "Dark Mode"}
+          {theme === "dark" ? "☀️ Light" : "🌙 Dark"}
         </button>
       </div>
       <div className="top-right-actions">
