@@ -57,9 +57,9 @@ h3, h4 {
   --accent-strong: #e8cd6e;
   --accent-2: #b9912b;
   --accent-2-soft: rgba(185, 145, 43, 0.14);
-  --btn: #d4af37;
-  --btn-hover: #c19d2e;
-  --btn-text: #181203;
+  --btn: #0e0d0b;
+  --btn-hover: #1a1712;
+  --btn-text: #d4af37;
   --success: #8fbf7f;
   --success-soft: rgba(143, 191, 127, 0.14);
   --warning: #e0973a;
@@ -102,9 +102,9 @@ body.theme-light {
   --accent-strong: #7a600f;
   --accent-2: #6e5512;
   --accent-2-soft: rgba(110, 85, 18, 0.1);
-  --btn: #1d1a13;
-  --btn-hover: #000000;
-  --btn-text: #f7f4ea;
+  --btn: #15130e;
+  --btn-hover: #241f15;
+  --btn-text: #d4af37;
   --success: #4d7c3a;
   --success-soft: rgba(77, 124, 58, 0.12);
   --warning: #a8641d;
@@ -309,11 +309,14 @@ select:focus {
   box-shadow: 0 0 0 3px var(--ring);
 }
 
+/* Buttons: flat near-black fill, gold outline, gold text. The outline
+   uses currentColor so variants that recolor text (danger, warning)
+   automatically get a matching outline. No gradients, no glow. */
 button {
   padding: 12px 24px;
   background: var(--btn);
   color: var(--btn-text);
-  border: none;
+  border: 1.5px solid currentColor;
   border-radius: 10px;
   font-size: 16px;
   font-family: inherit;
@@ -324,6 +327,10 @@ button {
 
 button:hover {
   background: var(--btn-hover);
+}
+
+button:disabled {
+  cursor: not-allowed;
 }
 
 button:not(:disabled):active {
@@ -371,6 +378,7 @@ a:focus-visible {
 .nav button {
   background: transparent;
   color: var(--muted);
+  border: 1.5px solid transparent;
   border-radius: 999px;
   padding: 10px 22px;
   font-size: 15px;
@@ -396,12 +404,12 @@ a:focus-visible {
 }
 
 .logout-btn {
-  background: var(--danger-solid);
-  color: #fff;
+  background: var(--btn);
+  color: var(--danger);
 }
 
 .logout-btn:hover {
-  background: var(--danger-strong);
+  background: var(--danger-soft);
 }
 
 .interview-types {
@@ -447,14 +455,13 @@ a:focus-visible {
 .interview-btn {
   padding: 20px 40px;
   font-size: 18px;
-  background: linear-gradient(135deg, var(--btn) 0%, var(--accent-2) 100%);
-  box-shadow: var(--shadow-pop);
+  background: var(--btn);
 }
 
 .interview-btn:hover {
-  background: linear-gradient(135deg, var(--btn-hover) 0%, var(--accent-2) 100%);
+  background: var(--btn-hover);
+  color: var(--accent-strong);
   transform: translateY(-2px);
-  box-shadow: var(--shadow-glow);
 }
 
 .interview-btn:disabled {
@@ -466,10 +473,10 @@ a:focus-visible {
 }
 
 .nav button.active {
-  background: linear-gradient(135deg, var(--btn) 0%, var(--accent-2) 100%);
+  background: var(--btn);
   color: var(--btn-text);
+  border-color: currentColor;
   font-weight: 600;
-  box-shadow: var(--shadow-pop);
 }
 
 .question-section, .answer-section, .feedback-section {
@@ -628,12 +635,11 @@ textarea:disabled {
 }
 
 .next-btn {
-  background: var(--accent);
-  color: var(--btn-text);
+  background: var(--btn);
 }
 
 .next-btn:hover {
-  background: var(--accent-hover);
+  background: var(--btn-hover);
 }
 
 .back-btn {
@@ -669,9 +675,9 @@ textarea:disabled {
   font-size: 24px;
   font-weight: 700;
   font-family: 'Playfair Display', Georgia, serif;
-  background: linear-gradient(135deg, var(--accent-soft) 0%, var(--accent-2-soft) 100%);
-  border: 1px solid var(--accent);
-  color: var(--card-text);
+  background: var(--btn);
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
   padding: 10px 22px;
   border-radius: 999px;
   display: inline-block;
@@ -699,13 +705,8 @@ textarea:disabled {
 
 /* Dashboard Styles */
 .load-dashboard-btn, .refresh-btn {
-  background: var(--accent);
   margin: 20px auto;
   display: block;
-}
-
-.load-dashboard-btn:hover, .refresh-btn:hover {
-  background: var(--accent-hover);
 }
 
 .stats-grid {
@@ -1094,9 +1095,9 @@ textarea:disabled {
   margin-top: 14px;
   width: 100%;
   max-width: 360px;
-  background: var(--accent);
+  background: var(--btn);
   color: var(--btn-text);
-  border: none;
+  border: 1.5px solid currentColor;
   border-radius: 10px;
   padding: 12px 16px;
   font-size: 14px;
@@ -1105,7 +1106,7 @@ textarea:disabled {
 }
 
 .recent-sessions-view-more:hover {
-  background: var(--accent-hover);
+  background: var(--btn-hover);
 }
 
 .recent-sessions-loading,
@@ -1488,18 +1489,7 @@ textarea:disabled {
   font-size: 14px;
   color: var(--muted);
 }
-.interview-btn.timed-mode-btn {
-  background: transparent;
-  border: 1.5px solid var(--accent);
-  color: var(--accent);
-  box-shadow: none;
-}
-.interview-btn.timed-mode-btn:hover {
-  background: var(--accent-soft);
-  border-color: var(--accent-strong);
-  color: var(--accent-strong);
-  box-shadow: var(--shadow-glow);
-}
+/* Timed tile shares the standard black-and-gold-outline button style. */
 
 /* Timed setup */
 .timed-setup {
@@ -1631,8 +1621,9 @@ textarea:disabled {
   color: var(--muted);
 }
 .timed-summary-score-pill {
-  background: linear-gradient(135deg, var(--btn) 0%, var(--accent-2) 100%);
-  color: var(--btn-text);
+  background: var(--btn);
+  border: 1px solid var(--accent);
+  color: var(--accent);
   padding: 2px 10px;
   border-radius: 999px;
   font-weight: 600;
@@ -1951,7 +1942,7 @@ textarea:disabled {
 .calendar-add-event-btn {
   padding: 8px 16px;
   border-radius: 10px;
-  border: 1px solid var(--border);
+  border: 1.5px solid currentColor;
   background: var(--btn);
   color: var(--btn-text);
   font-weight: 600;
@@ -2102,7 +2093,7 @@ textarea:disabled {
 .settings-btn-secondary {
   padding: 8px 16px;
   border-radius: 10px;
-  border: 1px solid var(--border);
+  border: 1.5px solid currentColor;
   background: var(--btn);
   color: var(--btn-text);
   font-weight: 600;
@@ -2121,15 +2112,15 @@ textarea:disabled {
 .settings-btn-danger {
   padding: 8px 16px;
   border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
-  background: var(--danger-soft);
+  border: 1.5px solid currentColor;
+  background: var(--btn);
   color: var(--danger);
   font-weight: 700;
   cursor: pointer;
 }
 
 .settings-btn-danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--danger) 24%, transparent);
+  background: var(--danger-soft);
 }
 
 .settings-btn-danger:disabled {
@@ -2140,16 +2131,15 @@ textarea:disabled {
 .settings-btn-danger-solid {
   padding: 10px 18px;
   border-radius: 10px;
-  border: none;
-  background: linear-gradient(135deg, var(--danger-strong) 0%, var(--danger-solid) 100%);
-  color: #fff;
+  border: 1.5px solid currentColor;
+  background: var(--btn);
+  color: var(--danger);
   font-weight: 700;
   cursor: pointer;
-  box-shadow: var(--shadow-pop);
 }
 
 .settings-btn-danger-solid:hover:not(:disabled) {
-  filter: brightness(1.06);
+  background: var(--danger-soft);
 }
 
 .settings-btn-danger-solid:disabled {
@@ -2169,7 +2159,7 @@ textarea:disabled {
   padding: 16px 18px;
   border-radius: 14px;
   border: 1px solid var(--border);
-  background: linear-gradient(135deg, var(--accent-soft) 0%, var(--box-bg) 55%);
+  background: var(--box-bg);
   text-decoration: none;
   color: inherit;
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
@@ -2312,34 +2302,32 @@ body.theme-light .settings-confirm-overlay {
   min-width: 100px;
   padding: 10px 22px;
   border-radius: 12px;
-  border: none;
-  background: linear-gradient(135deg, var(--warning) 0%, var(--sand) 100%);
-  color: #1a0f00;
+  border: 1.5px solid currentColor;
+  background: var(--btn);
+  color: var(--warning);
   font-weight: 800;
   font-size: 0.95rem;
   cursor: pointer;
-  box-shadow: var(--shadow-pop);
 }
 
 .settings-confirm-btn-yes:hover {
-  filter: brightness(1.05);
+  background: var(--warning-soft);
 }
 
 .settings-confirm-btn-yes-danger {
   min-width: 100px;
   padding: 10px 22px;
   border-radius: 12px;
-  border: none;
-  background: linear-gradient(135deg, var(--danger-strong) 0%, var(--danger-solid) 100%);
-  color: #fff;
+  border: 1.5px solid currentColor;
+  background: var(--btn);
+  color: var(--danger);
   font-weight: 800;
   font-size: 0.95rem;
   cursor: pointer;
-  box-shadow: var(--shadow-pop);
 }
 
 .settings-confirm-btn-yes-danger:hover {
-  filter: brightness(1.05);
+  background: var(--danger-soft);
 }
 
 .account-modal {
