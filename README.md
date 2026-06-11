@@ -17,6 +17,20 @@ https://vdhaya-interview-simulator.com
 - Support for various technical interview formats
 - CORS, health checks, Azure and Docker deployment support
 
+## UI & Design
+
+The frontend uses a token-based design system defined in `frontend/src/App.css`:
+
+- **Palette**: gender-neutral teal accent over evergreen-slate surfaces, with a
+  warm sand secondary (calendar/timed mode) and soft coral for destructive actions.
+  All colors flow from CSS custom properties — no hard-coded hexes in components.
+- **Themes**: dark and light, persisted to `localStorage` and seeded from the
+  OS `prefers-color-scheme` on first visit.
+- **Typography**: [Sora](https://fonts.google.com/specimen/Sora) for headings,
+  [Inter](https://fonts.google.com/specimen/Inter) for body text.
+- **Accessibility**: visible focus rings on all interactive elements,
+  `prefers-reduced-motion` support, and theme-aware scrollbars.
+
 ## Quick Start
 
 ### Backend
