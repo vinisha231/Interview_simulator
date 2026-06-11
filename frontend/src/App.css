@@ -36,84 +36,94 @@ h3, h4 {
 }
 
 /* ——— Design tokens ———
-   Gender-neutral palette: deep evergreen-slate surfaces, teal accent,
-   warm sand secondary, soft coral for danger. */
+   Electric indigo & violet on deep charcoal: vivid indigo accent,
+   violet gradient partner, warm gold secondary, soft coral danger. */
 :root {
-  --bg: #0f1413;
-  --bg-glow-1: rgba(52, 179, 154, 0.1);
-  --bg-glow-2: rgba(200, 158, 100, 0.07);
-  --text: #e9efec;
-  --card-bg: #151c1a;
-  --card-text: #e9efec;
-  --muted: #93a59e;
-  --border: #27322e;
-  --accent: #34b39a;
-  --accent-hover: #2a9c86;
-  --accent-soft: rgba(52, 179, 154, 0.16);
-  --accent-strong: #5fcdb6;
-  --btn: #1f8a74;
-  --btn-hover: #1a7967;
-  --success: #6bbf8a;
-  --success-soft: rgba(107, 191, 138, 0.14);
-  --warning: #d9a13f;
-  --warning-soft: rgba(217, 161, 63, 0.16);
-  --danger: #e08585;
-  --danger-strong: #d96a6a;
-  --danger-soft: rgba(224, 133, 133, 0.14);
-  --danger-solid: #c75454;
-  --sand: #c89e64;
-  --sand-soft: rgba(200, 158, 100, 0.18);
-  --input-bg: #101615;
-  --input-text: #e9efec;
-  --input-border: #2c3834;
-  --box-bg: #121917;
-  --box-border: #27322e;
-  --score-bg: #101615;
-  --stat-bg: #131a18;
-  --table-bg: #151c1a;
-  --table-header: #1e2a27;
-  --ring: rgba(52, 179, 154, 0.45);
+  --bg: #0b0b14;
+  --bg-glow-1: rgba(99, 102, 241, 0.14);
+  --bg-glow-2: rgba(168, 85, 247, 0.1);
+  --aurora-1: rgba(99, 102, 241, 0.2);
+  --aurora-2: rgba(168, 85, 247, 0.16);
+  --text: #ecedf6;
+  --card-bg: #13131f;
+  --card-text: #ecedf6;
+  --muted: #989ab5;
+  --border: #272838;
+  --accent: #818cf8;
+  --accent-hover: #6d79f0;
+  --accent-soft: rgba(129, 140, 248, 0.16);
+  --accent-strong: #a5b0ff;
+  --accent-2: #a855f7;
+  --accent-2-soft: rgba(168, 85, 247, 0.16);
+  --btn: #6366f1;
+  --btn-hover: #5558e8;
+  --success: #5ec98f;
+  --success-soft: rgba(94, 201, 143, 0.14);
+  --warning: #e0a84e;
+  --warning-soft: rgba(224, 168, 78, 0.16);
+  --danger: #ef8080;
+  --danger-strong: #e56666;
+  --danger-soft: rgba(239, 128, 128, 0.14);
+  --danger-solid: #d14f4f;
+  --sand: #d9a749;
+  --sand-soft: rgba(217, 167, 73, 0.18);
+  --input-bg: #0e0e18;
+  --input-text: #ecedf6;
+  --input-border: #2d2e42;
+  --box-bg: #10101b;
+  --box-border: #272838;
+  --score-bg: #0e0e18;
+  --stat-bg: #11111d;
+  --table-bg: #13131f;
+  --table-header: #232440;
+  --ring: rgba(129, 140, 248, 0.45);
   --shadow-card: 0 16px 40px rgba(0, 0, 0, 0.35);
   --shadow-pop: 0 6px 18px rgba(0, 0, 0, 0.28);
+  --shadow-glow: 0 8px 30px rgba(99, 102, 241, 0.35);
 }
 
 body.theme-light {
-  --bg: #f6f5f0;
-  --bg-glow-1: rgba(14, 124, 107, 0.07);
-  --bg-glow-2: rgba(200, 158, 100, 0.1);
-  --text: #1d2724;
-  --card-bg: #fffefb;
-  --card-text: #1d2724;
-  --muted: #5c6b66;
-  --border: #e2e0d6;
-  --accent: #0e7c6b;
-  --accent-hover: #0b6557;
-  --accent-soft: rgba(14, 124, 107, 0.1);
-  --accent-strong: #0e7c6b;
-  --btn: #0e7c6b;
-  --btn-hover: #0b6557;
-  --success: #2e7d4f;
-  --success-soft: rgba(46, 125, 79, 0.12);
-  --warning: #a86f1d;
-  --warning-soft: rgba(168, 111, 29, 0.12);
-  --danger: #bb5050;
-  --danger-strong: #b04a4a;
-  --danger-soft: rgba(187, 80, 80, 0.1);
-  --danger-solid: #a64444;
-  --sand: #a87f48;
-  --sand-soft: rgba(168, 127, 72, 0.16);
+  --bg: #f5f5fb;
+  --bg-glow-1: rgba(99, 102, 241, 0.08);
+  --bg-glow-2: rgba(168, 85, 247, 0.07);
+  --aurora-1: rgba(99, 102, 241, 0.14);
+  --aurora-2: rgba(168, 85, 247, 0.11);
+  --text: #1c1d2e;
+  --card-bg: #ffffff;
+  --card-text: #1c1d2e;
+  --muted: #5b5e78;
+  --border: #e3e4f0;
+  --accent: #5558e8;
+  --accent-hover: #4649d1;
+  --accent-soft: rgba(85, 88, 232, 0.1);
+  --accent-strong: #4649d1;
+  --accent-2: #7c3aed;
+  --accent-2-soft: rgba(124, 58, 237, 0.1);
+  --btn: #5558e8;
+  --btn-hover: #4649d1;
+  --success: #2e8b57;
+  --success-soft: rgba(46, 139, 87, 0.12);
+  --warning: #a8741d;
+  --warning-soft: rgba(168, 116, 29, 0.12);
+  --danger: #c14e4e;
+  --danger-strong: #b54646;
+  --danger-soft: rgba(193, 78, 78, 0.1);
+  --danger-solid: #a93f3f;
+  --sand: #a87f2e;
+  --sand-soft: rgba(168, 127, 46, 0.16);
   --input-bg: #ffffff;
-  --input-text: #1d2724;
-  --input-border: #d4d2c6;
-  --box-bg: #f1f0e9;
-  --box-border: #e2e0d6;
-  --score-bg: #eeede5;
-  --stat-bg: #faf9f4;
+  --input-text: #1c1d2e;
+  --input-border: #d6d7e6;
+  --box-bg: #f0f0f8;
+  --box-border: #e3e4f0;
+  --score-bg: #ececf6;
+  --stat-bg: #f9f9fd;
   --table-bg: #ffffff;
-  --table-header: #0e7c6b;
-  --ring: rgba(14, 124, 107, 0.35);
-  --shadow-card: 0 12px 32px rgba(54, 63, 60, 0.1);
-  --shadow-pop: 0 6px 16px rgba(54, 63, 60, 0.12);
+  --table-header: #5558e8;
+  --ring: rgba(85, 88, 232, 0.35);
+  --shadow-card: 0 12px 32px rgba(57, 59, 92, 0.1);
+  --shadow-pop: 0 6px 16px rgba(57, 59, 92, 0.12);
+  --shadow-glow: 0 8px 30px rgba(99, 102, 241, 0.2);
 }
 
 body.theme-dark,
@@ -343,13 +353,14 @@ a:focus-visible {
 .interview-btn {
   padding: 20px 40px;
   font-size: 18px;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--btn) 100%);
+  background: linear-gradient(135deg, var(--btn) 0%, var(--accent-2) 100%);
   box-shadow: var(--shadow-pop);
 }
 
 .interview-btn:hover {
-  background: linear-gradient(135deg, var(--accent-hover) 0%, var(--btn-hover) 100%);
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, var(--btn-hover) 0%, var(--accent-2) 100%);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow);
 }
 
 .interview-btn:disabled {
@@ -361,7 +372,7 @@ a:focus-visible {
 }
 
 .nav button.active {
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--btn) 0%, var(--accent-2) 100%);
   color: #fff;
   font-weight: 600;
   box-shadow: var(--shadow-pop);
