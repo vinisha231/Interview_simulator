@@ -21,8 +21,11 @@ Author: LLM Interview Simulator Team
 from fastapi import APIRouter, HTTPException, Depends  # FastAPI router and error handling
 from pydantic import BaseModel  # Data validation and serialization
 from typing import Optional, List, Dict  # Type hints for better code documentation
+import logging
 import random
 import re
+
+logger = logging.getLogger(__name__)
 
 # Import Bedrock service
 from app.services.bedrock_service import get_bedrock_service
@@ -339,8 +342,9 @@ async def evaluate_answer(request: InterviewRequest, _user=Depends(get_current_a
             star_feedback=star_feedback,
         )
         
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error evaluating answer: {str(e)}")
+    except Exception:
+        logger.exception("evaluate_answer failed")
+        raise HTTPException(status_code=500, detail="Error evaluating answer. Please try again.")
 
 
 @router.post("/followup")
@@ -362,8 +366,9 @@ async def followup_question(request: FollowupRequest, _user=Depends(get_current_
             "question": question,
             "interview_type": request.interview_type or "behavioral"
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating follow-up question: {str(e)}")
+    except Exception:
+        logger.exception("followup_question failed")
+        raise HTTPException(status_code=500, detail="Error generating follow-up question. Please try again.")
 
 
 @router.post("/clarify-question")
@@ -394,8 +399,9 @@ async def clarify_question(request: ClarifyQuestionRequest, _user=Depends(get_cu
             conversation=history,
         )
         return {"reply": (reply or "").strip() or "I couldn’t clarify that just now—try rephrasing your question."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error clarifying question: {str(e)}")
+    except Exception:
+        logger.exception("clarify_question failed")
+        raise HTTPException(status_code=500, detail="Error clarifying question. Please try again.")
 
 
 # Define an endpoint to get available interview types

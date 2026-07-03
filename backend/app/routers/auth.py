@@ -171,7 +171,14 @@ async def require_admin(current_user: User = Depends(get_current_active_user)):
 
 
 def _db_error_detail(ex: Exception) -> str:
-    """Turn DB errors into a clear message for the client."""
+    """Message for the client on a DB error.
+
+    In production return a generic message so we don't leak schema/config hints
+    (table names, DATABASE_URL, migration commands) to callers. In development
+    surface the actionable hint to keep local debugging fast.
+    """
+    if IS_PRODUCTION:
+        return "A database error occurred. Please try again later."
     msg = str(ex).lower()
     if "relation" in msg and "does not exist" in msg:
         return "Database tables missing. Run in backend: alembic upgrade head"
