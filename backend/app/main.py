@@ -31,13 +31,18 @@ _backend_root = Path(__file__).resolve().parent.parent
 load_dotenv(_backend_root / ".env")
 # Load database (and on EB, inject env from get-config) before routers so Bedrock sees AWS_* and BEDROCK_MODEL_ID
 import app.database  # noqa: E402, F401
+from app.config import IS_PRODUCTION  # noqa: E402
 
 # Create the FastAPI application instance
-# This is the main object that handles all our API endpoints
+# This is the main object that handles all our API endpoints.
+# Interactive docs (Swagger/ReDoc/OpenAPI schema) are disabled in production so
+# the full API surface isn't published to anonymous visitors.
+_docs_kwargs = {"docs_url": None, "redoc_url": None, "openapi_url": None} if IS_PRODUCTION else {}
 app = FastAPI(
     title="LLM Interview Simulator",  # Title shown in API documentation
     description="A comprehensive interview simulation platform using LLMs",  # Description for docs
-    version="1.0.0"  # Version number
+    version="1.0.0",  # Version number
+    **_docs_kwargs,
 )
 
 # Configure CORS (Cross-Origin Resource Sharing) middleware
