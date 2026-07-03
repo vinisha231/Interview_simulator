@@ -10,7 +10,7 @@ What this file does:
 2. Configures CORS (Cross-Origin Resource Sharing) for web requests
 3. Includes our interview API routes
 4. Defines health check endpoints
-5. Sets up the server to run on Azure-compatible settings
+5. Sets up the server to run on AWS (Elastic Beanstalk / Lambda)
 
 Author: LLM Interview Simulator Team
 """
@@ -104,7 +104,7 @@ def health_check():
     Health check endpoint for monitoring and load balancers.
     
     This endpoint:
-    - Is used by Azure and other cloud services to check if the app is running
+    - Is used by AWS (Elastic Beanstalk / load balancers) to check if the app is running
     - Returns the current status of the API
     - Can be called frequently without impacting performance
     
@@ -135,17 +135,17 @@ def serve_frontend(full_path: str):
     return FileResponse(index)
 
 
-# Azure-compatible entry point
-# This code runs when the script is executed directly (not imported)
-# Azure App Service uses this to start our application
+# Local/dev entry point
+# This code runs when the script is executed directly (not imported).
+# In production the app is served by gunicorn/uvicorn workers (see Procfile).
 if __name__ == "__main__":
-    # Get the port from environment variables (Azure sets this automatically)
+    # Get the port from environment variables (the platform sets this automatically)
     # Default to port 8000 if no environment variable is set
     port = int(os.environ.get("PORT", 8000))
-    
+
     # Start the server using uvicorn
     # host="0.0.0.0" means the server accepts connections from any IP address
-    # This is required for Azure deployment
+    # This is required when running inside a container / on a hosting platform
     uvicorn.run(app, host="0.0.0.0", port=port)
 
 # AWS Lambda handler (used by Zappa/Lambda)
