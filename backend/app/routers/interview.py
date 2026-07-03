@@ -18,7 +18,7 @@ Author: LLM Interview Simulator Team
 """
 
 # Import necessary libraries
-from fastapi import APIRouter, HTTPException  # FastAPI router and error handling
+from fastapi import APIRouter, HTTPException, Depends  # FastAPI router and error handling
 from pydantic import BaseModel  # Data validation and serialization
 from typing import Optional, List, Dict  # Type hints for better code documentation
 import random
@@ -27,6 +27,9 @@ import re
 # Import Bedrock service
 from app.services.bedrock_service import get_bedrock_service
 from app.routers.leetcode_question_bank import LEETCODE_STYLE_GENERAL, LEETCODE_STYLE_QUESTIONS
+# Require a logged-in user: these endpoints call AWS Bedrock, so leaving them
+# open let anyone run up LLM costs. The frontend already sends the bearer token.
+from app.routers.auth import get_current_active_user
 
 # Create a router for interview-related endpoints
 # prefix="/api/interview" means all routes will start with /api/interview/
@@ -123,6 +126,7 @@ async def generate_question(
     role: Optional[str] = None,
     company: Optional[str] = None,
     language: Optional[str] = None,
+    _user=Depends(get_current_active_user),
 ):
     """
     Generate a new interview question using AWS Bedrock.
@@ -231,7 +235,7 @@ async def generate_question(
 
 # Define an endpoint to evaluate user answers
 @router.post("/evaluate", response_model=InterviewResponse)
-async def evaluate_answer(request: InterviewRequest):
+async def evaluate_answer(request: InterviewRequest, _user=Depends(get_current_active_user)):
     """
     Evaluate a user's answer to an interview question using AWS Bedrock.
     
@@ -340,7 +344,7 @@ async def evaluate_answer(request: InterviewRequest):
 
 
 @router.post("/followup")
-async def followup_question(request: FollowupRequest):
+async def followup_question(request: FollowupRequest, _user=Depends(get_current_active_user)):
     """
     Generate a conversational follow-up question based on the user's answer.
     """
@@ -363,7 +367,7 @@ async def followup_question(request: FollowupRequest):
 
 
 @router.post("/clarify-question")
-async def clarify_question(request: ClarifyQuestionRequest):
+async def clarify_question(request: ClarifyQuestionRequest, _user=Depends(get_current_active_user)):
     """
     Chat about the interview question (any clarification). Not graded; responses must not solve the problem.
     """
