@@ -65,6 +65,15 @@ def test_interview_endpoints_require_auth(client):
     assert r.status_code == 401
 
 
+def test_security_headers_present(client):
+    r = client.get("/health")
+    assert r.headers.get("X-Content-Type-Options") == "nosniff"
+    assert r.headers.get("X-Frame-Options") == "DENY"
+    assert "default-src 'self'" in r.headers.get("Content-Security-Policy", "")
+    # Voice answers need the mic, so it must stay allowed.
+    assert "microphone=(self)" in r.headers.get("Permissions-Policy", "")
+
+
 def test_sessions_scoped_to_current_user(client, register_and_login):
     assert client.get("/api/sessions/").status_code == 401
     headers, _ = register_and_login(username="erin")

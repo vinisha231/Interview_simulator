@@ -72,6 +72,10 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
+# Attach security response headers (CSP + clickjacking/sniffing protection).
+from app.security_headers import add_security_headers  # noqa: E402
+add_security_headers(app)
+
 # Include all API routers
 app.include_router(auth.router)
 app.include_router(interview.router)
