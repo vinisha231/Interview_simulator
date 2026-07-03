@@ -43,13 +43,26 @@ app = FastAPI(
 # Configure CORS (Cross-Origin Resource Sharing) middleware
 # CORS allows web browsers to make requests to our API from different domains
 # This is essential when our frontend and backend are hosted separately
-origins_env = os.getenv("CORS_ORIGINS", "*")
-allowed_origins = ["*"] if origins_env.strip() == "*" else [o.strip() for o in origins_env.split(",") if o.strip()]
+# Default to the production domain when CORS_ORIGINS is unset. Set CORS_ORIGINS
+# to a comma-separated allowlist per environment.
+_DEFAULT_ORIGINS = "https://vdhaya-interview-simulator.com,http://localhost:5173,http://localhost:3000"
+origins_env = os.getenv("CORS_ORIGINS", _DEFAULT_ORIGINS)
+_is_wildcard = origins_env.strip() == "*"
+allowed_origins = ["*"] if _is_wildcard else [o.strip() for o in origins_env.split(",") if o.strip()]
+
+# A wildcard origin cannot be combined with credentials (browsers reject it and
+# it would be unsafe), so only send credentials when we have an explicit allowlist.
+allow_credentials = not _is_wildcard
+if _is_wildcard:
+    import logging
+    logging.getLogger(__name__).warning(
+        "CORS_ORIGINS is '*'; credentials disabled. Set an explicit allowlist in production."
+    )
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=True,  # Allow cookies and authentication headers
+    allow_credentials=allow_credentials,
     allow_methods=["*"],  # Allow all HTTP methods (GET, POST, PUT, DELETE, etc.)
     allow_headers=["*"],  # Allow all headers
 )
