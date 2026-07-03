@@ -65,6 +65,17 @@ class UserCreate(BaseModel):
             raise ValueError("Username must be at least 2 characters")
         return s
 
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        # Enforce a minimum strength. bcrypt only uses the first 72 bytes, so
+        # reject longer inputs rather than silently truncating them.
+        if v is None or len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("Password must be at most 72 bytes")
+        return v
+
 
 class UserResponse(BaseModel):
     id: int
