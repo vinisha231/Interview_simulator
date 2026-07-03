@@ -163,6 +163,13 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
     return current_user
 
 
+async def require_admin(current_user: User = Depends(get_current_active_user)):
+    """Allow only users flagged is_admin. Used to gate account/PII listings."""
+    if not getattr(current_user, "is_admin", False):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return current_user
+
+
 def _db_error_detail(ex: Exception) -> str:
     """Turn DB errors into a clear message for the client."""
     msg = str(ex).lower()
@@ -363,15 +370,24 @@ def delete_account(
 
 
 @router.get("/users/count")
-def get_users_count(db: Session = Depends(get_db)):
-    """Total registered users (same access model as GET /users — for admin/local curl)."""
+def get_users_count(
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    """Total registered users. Admin only."""
     total = db.query(func.count(User.id)).scalar() or 0
     return {"total": total}
 
 
 @router.get("/users", response_model=list[UserResponse])
-def list_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    """List all users with safe info: id, username, email, full_name, is_active, created_at (for admin/testing). Passwords are never returned."""
+def list_users(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    """List users with safe info: id, username, email, full_name, is_active, created_at. Admin only; passwords are never returned."""
+    limit = max(1, min(limit, 200))
     users = db.query(User).offset(skip).limit(limit).all()
     return users
 
