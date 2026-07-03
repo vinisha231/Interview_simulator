@@ -391,3 +391,32 @@ def list_users(
     users = db.query(User).offset(skip).limit(limit).all()
     return users
 
+
+@router.post("/users/{user_id}/enable", response_model=UserResponse)
+def enable_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    """Re-activate a disabled account. Admin only.
+
+    disable-account sets is_active=False with no self-service way back in, so
+    without this an admin had to edit the database by hand to restore a user.
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    try:
+        user.is_active = True
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        return user
+    except SQLAlchemyError as e:
+        logger.exception("Enable user DB error")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_db_error_detail(e),
+        )
+
