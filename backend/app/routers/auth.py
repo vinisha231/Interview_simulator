@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from sqlalchemy.exc import SQLAlchemyError
 from app.config import IS_PRODUCTION
+from app.utils.rate_limit import rate_limit
 from app.database import SessionLocal
 from app.models.user import User
 from app.models.session import InterviewSession
@@ -188,7 +189,12 @@ def _db_error_detail(ex: Exception) -> str:
 
 
 # API Routes
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit("register", limit=10, window_seconds=3600))],
+)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
     """
     Register a new user.
@@ -241,7 +247,11 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
         )
 
 
-@router.post("/login", response_model=Token)
+@router.post(
+    "/login",
+    response_model=Token,
+    dependencies=[Depends(rate_limit("login", limit=10, window_seconds=300))],
+)
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
