@@ -5,6 +5,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from sqlalchemy.exc import SQLAlchemyError
+from app.config import IS_PRODUCTION
 from app.database import SessionLocal
 from app.models.user import User
 from app.models.session import InterviewSession
@@ -21,8 +22,22 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-# Security configuration (use env so login works on EB and across restarts)
-SECRET_KEY = os.getenv("SECRET_KEY") or secrets.token_urlsafe(32)
+# Security configuration (use env so login works on EB and across restarts).
+# In production a stable SECRET_KEY is REQUIRED: without it, each gunicorn worker
+# would generate its own key, so tokens minted by one worker fail on another and
+# every restart silently invalidates all sessions. Fail fast instead of guessing.
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    if IS_PRODUCTION:
+        raise RuntimeError(
+            "SECRET_KEY is not set. Set a stable SECRET_KEY environment variable "
+            "(e.g. `openssl rand -hex 32`) on the server before starting in production."
+        )
+    logger.warning(
+        "SECRET_KEY not set; generating an ephemeral key for local development. "
+        "Tokens will not survive a restart. Set SECRET_KEY in backend/.env to persist logins."
+    )
+    SECRET_KEY = secrets.token_urlsafe(32)
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
